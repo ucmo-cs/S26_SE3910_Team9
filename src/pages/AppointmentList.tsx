@@ -2,9 +2,12 @@ import { Link } from "react-router-dom";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import { page, stack, grid2 } from "../styles/layout";
-import { button, buttonPrimary, muted, emptyState, pill } from "../styles/ui";
+import { button, buttonPrimary, emptyState, pill } from "../styles/ui";
 
-type Appointment = {
+import { useAppointments } from "../state/appointments";
+
+// we no longer need mock data; type reexported for clarity
+export type Appointment = {
   id: string;
   topicName: string;
   branchName: string;
@@ -14,28 +17,9 @@ type Appointment = {
   status: "Confirmed" | "Pending";
 };
 
-const mockAppointments: Appointment[] = [
-  {
-    id: "a1",
-    topicName: "Open a new account",
-    branchName: "Downtown Branch",
-    dateLabel: "Fri, Feb 20",
-    timeLabel: "10:30 AM",
-    customerName: "Taylor",
-    status: "Confirmed",
-  },
-  {
-    id: "a2",
-    topicName: "Loan consultation",
-    branchName: "West Branch",
-    dateLabel: "Sat, Feb 21",
-    timeLabel: "1:00 PM",
-    customerName: "Jordan",
-    status: "Pending",
-  },
-];
-
 function AppointmentList() {
+  const { appointments, removeAppointment } = useAppointments();
+
   return (
     <div className={page}>
       <div className={stack}>
@@ -49,7 +33,7 @@ function AppointmentList() {
           }
         />
 
-        {mockAppointments.length === 0 ? (
+        {appointments.length === 0 ? (
           <div className={emptyState}>
             <div className="mb-2 text-4xl">📅</div>
             <h3 className="mb-1 text-lg font-semibold text-slate-900">No appointments yet</h3>
@@ -62,8 +46,21 @@ function AppointmentList() {
           </div>
         ) : (
           <div className={grid2}>
-            {mockAppointments.map((a) => (
+            {appointments.map((a) => (
               <Card key={a.id}>
+                <div className="relative">
+                  <button
+                    className="absolute top-2 right-2 text-slate-400 hover:text-slate-600"
+                    title="Remove appointment"
+                    onClick={() => {
+                      if (window.confirm("Remove this appointment?")) {
+                        removeAppointment(a.id);
+                      }
+                    }}
+                  >
+                    ✖️
+                  </button>
+                </div>
                 <div className="flex items-start justify-between">
                   <div className="flex flex-col gap-1">
                     <span className={pill + " bg-blue-50 text-blue-700 border-blue-100 mb-2 w-fit"}>

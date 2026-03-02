@@ -7,6 +7,9 @@ import { page, stack, section, grid2, rowBetween, grid3 } from "../styles/layout
 // FIXED: added 'emptyState' to imports
 import { button, buttonPrimary, buttonGhost, divider, h2, input, label, muted, emptyState } from "../styles/ui";
 
+// use shared appointment state
+import { useAppointments } from "../state/appointments";
+
 type Topic = { id: string; name: string; icon: string };
 type Branch = { id: string; name: string; topicIds: string[] };
 type Slot = { id: string; dateLabel: string; timeLabel: string; isBooked: boolean };
@@ -55,6 +58,8 @@ function AppointmentCreate() {
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
 
+  const { appointments, addAppointment } = useAppointments();
+
   const currentIndex = useMemo(() => {
     if (step === "topic") return 0;
     if (step === "branch") return 1;
@@ -70,7 +75,11 @@ function AppointmentCreate() {
   }, [topicId]);
 
   const selectedBranch = useMemo(() => branches.find((b) => b.id === branchId) ?? null, [branchId]);
-  const availableSlots = useMemo(() => allSlots.filter((s) => !s.isBooked), []);
+  // compute what slots are actually available by comparing to stored appointments
+  const availableSlots = useMemo(() => {
+    const bookedIds = new Set(appointments.map((a) => a.slotId));
+    return allSlots.filter((s) => !s.isBooked && !bookedIds.has(s.id));
+  }, [appointments]);
   const selectedSlot = useMemo(() => allSlots.find((s) => s.id === slotId) ?? null, [slotId]);
 
   function goNext() {
@@ -95,7 +104,28 @@ function AppointmentCreate() {
     step === "confirm";
 
   function submitMock() {
-    navigate("/appointments/a1");
+    if (!selectedTopic || !selectedBranch || !selectedSlot) return;
+    const newAppt = addAppointment({
+      topicId: selectedTopic.id,
+      topicName: selectedTopic.name,
+      topicIcon: selectedTopic.icon,
+      branchId: selectedBranch.id,
+      branchName: selectedBranch.name,
+      slotId: selectedSlot.id,
+      dateLabel: selectedSlot.dateLabel,
+      timeLabel: selectedSlot.timeLabel,
+      customerName: customerName.trim(),
+      customerEmail: customerEmail.trim(),
+    });
+
+    // reset form just in case user returns
+    setTopicId("");
+    setBranchId("");
+    setSlotId("");
+    setCustomerName("");
+    setCustomerEmail("");
+
+    navigate(`/appointments/${newAppt.id}`);
   }
 
   // Tile styling helper

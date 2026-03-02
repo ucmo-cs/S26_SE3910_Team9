@@ -1,19 +1,30 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import { page, stack, section } from "../styles/layout";
 import { button, muted, divider } from "../styles/ui";
 
+import { useAppointments } from "../state/appointments";
+
 function AppointmentDetail() {
   const params = useParams();
-  const appointmentId = params.appointmentId ?? "unknown";
+  const navigate = useNavigate();
+  const appointmentId = params.appointmentId ?? "";
+  const { getAppointment } = useAppointments();
+  const appt = getAppointment(appointmentId || "");
+
+  if (!appt) {
+    // if not found, navigate back to list
+    navigate("/appointments");
+    return null;
+  }
 
   return (
     <div className={page}>
       <div className={stack}>
         <PageHeader
           title="Appointment Confirmation"
-          subtitle="Mock confirmation page (prototype)."
+          subtitle="Here's the information for your appointment."
           right={
             <Link to="/appointments" className={button}>
               Back to List
@@ -24,16 +35,20 @@ function AppointmentDetail() {
         <Card>
           <div className={section}>
             <div className="font-semibold">Appointment ID</div>
-            <div className={muted}>{appointmentId}</div>
+            <div className={muted}>{appt.id}</div>
 
             <div className={divider} />
 
-            <div className="font-semibold">Summary (mock)</div>
-            <div className={muted}>Topic: Open a new account</div>
-            <div className={muted}>Branch: Downtown Branch</div>
-            <div className={muted}>Time: Fri, Feb 20 • 10:30 AM</div>
-            <div className={muted}>Name: Taylor</div>
-            <div className={muted}>Email: taylor@example.com</div>
+            <div className="font-semibold">Summary</div>
+            <div className={muted}>
+              Topic: {appt.topicIcon} {appt.topicName}
+            </div>
+            <div className={muted}>Branch: {appt.branchName}</div>
+            <div className={muted}>
+              Time: {appt.dateLabel} • {appt.timeLabel}
+            </div>
+            <div className={muted}>Name: {appt.customerName}</div>
+            <div className={muted}>Email: {appt.customerEmail}</div>
 
             <div className={divider} />
 
