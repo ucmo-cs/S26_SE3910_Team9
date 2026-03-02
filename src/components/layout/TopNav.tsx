@@ -10,7 +10,7 @@ function TopNav() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
             B
           </div>
-          <span>Bank App</span>
+          <span>Bank App (Prototype)</span>
         </div>
 
         <div className={navLinks}>
