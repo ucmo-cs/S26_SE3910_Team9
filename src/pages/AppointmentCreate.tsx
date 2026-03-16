@@ -11,8 +11,9 @@ import { button, buttonPrimary, buttonGhost, divider, h2, input, label, muted, e
 import { useAppointments } from "../state/appointments";
 
 type Topic = { id: string; name: string; icon: string };
-type Branch = { id: string; name: string; topicIds: string[] };
-type Slot = { id: string; dateLabel: string; timeLabel: string; isBooked: boolean };
+type Branch = { id: string; name: string; topicIds: string[]; slotIds: string[] };
+// slots are global and booked state is derived from appointments
+type Slot = { id: string; dateLabel: string; timeLabel: string };
 
 // ADDED: More options (Investments, Notary)
 const topics: Topic[] = [
@@ -25,22 +26,22 @@ const topics: Topic[] = [
 
 // ADDED: New 'North Branch'
 const branches: Branch[] = [
-  { id: "b1", name: "Downtown Branch", topicIds: ["t1", "t2", "t3", "t4"] },
-  { id: "b2", name: "Westside Branch", topicIds: ["t2", "t3", "t5"] },
-  { id: "b3", name: "Eastside Branch", topicIds: ["t1", "t4", "t5"] },
-  { id: "b4", name: "North Hills (HQ)", topicIds: ["t1", "t2", "t3", "t4", "t5"] },
+  { id: "b1", name: "Downtown Branch", topicIds: ["t1", "t2", "t3", "t4"], slotIds: ["s1", "s3", "s4", "s5"] },
+  { id: "b2", name: "Westside Branch", topicIds: ["t2", "t3", "t5"], slotIds: ["s2", "s6"] },
+  { id: "b3", name: "Eastside Branch", topicIds: ["t1", "t4", "t5"], slotIds: ["s7", "s8"] },
+  { id: "b4", name: "North Hills (HQ)", topicIds: ["t1", "t2", "t3", "t4", "t5"], slotIds: ["s1","s2","s3","s4","s5","s6","s7","s8"] },
 ];
 
-// ADDED: More time slots
+// ADDED: More time slots (the branch-specific availability is tracked in branch.slotIds)
 const allSlots: Slot[] = [
-  { id: "s1", dateLabel: "Fri, Feb 20", timeLabel: "9:00 AM", isBooked: false },
-  { id: "s2", dateLabel: "Fri, Feb 20", timeLabel: "9:30 AM", isBooked: true },
-  { id: "s3", dateLabel: "Fri, Feb 20", timeLabel: "10:00 AM", isBooked: false },
-  { id: "s4", dateLabel: "Fri, Feb 20", timeLabel: "10:30 AM", isBooked: false },
-  { id: "s5", dateLabel: "Fri, Feb 20", timeLabel: "11:00 AM", isBooked: false },
-  { id: "s6", dateLabel: "Fri, Feb 20", timeLabel: "2:00 PM", isBooked: false },
-  { id: "s7", dateLabel: "Sat, Feb 21", timeLabel: "10:00 AM", isBooked: false },
-  { id: "s8", dateLabel: "Sat, Feb 21", timeLabel: "11:00 AM", isBooked: false },
+  { id: "s1", dateLabel: "Fri, Feb 20", timeLabel: "9:00 AM" },
+  { id: "s2", dateLabel: "Fri, Feb 20", timeLabel: "9:30 AM" },
+  { id: "s3", dateLabel: "Fri, Feb 20", timeLabel: "10:00 AM" },
+  { id: "s4", dateLabel: "Fri, Feb 20", timeLabel: "10:30 AM" },
+  { id: "s5", dateLabel: "Fri, Feb 20", timeLabel: "11:00 AM" },
+  { id: "s6", dateLabel: "Fri, Feb 20", timeLabel: "2:00 PM" },
+  { id: "s7", dateLabel: "Sat, Feb 21", timeLabel: "10:00 AM" },
+  { id: "s8", dateLabel: "Sat, Feb 21", timeLabel: "11:00 AM" },
 ];
 
 type StepId = "topic" | "branch" | "time" | "details" | "confirm";
@@ -75,11 +76,16 @@ function AppointmentCreate() {
   }, [topicId]);
 
   const selectedBranch = useMemo(() => branches.find((b) => b.id === branchId) ?? null, [branchId]);
-  // compute what slots are actually available by comparing to stored appointments
+
+  // compute what slots are actually available by checking branch and booked appointments
   const availableSlots = useMemo(() => {
     const bookedIds = new Set(appointments.map((a) => a.slotId));
-    return allSlots.filter((s) => !s.isBooked && !bookedIds.has(s.id));
-  }, [appointments]);
+    let slots = allSlots;
+    if (selectedBranch) {
+      slots = slots.filter((s) => selectedBranch.slotIds.includes(s.id));
+    }
+    return slots.filter((s) => !bookedIds.has(s.id));
+  }, [appointments, selectedBranch]);
   const selectedSlot = useMemo(() => allSlots.find((s) => s.id === slotId) ?? null, [slotId]);
 
   function goNext() {
@@ -160,23 +166,41 @@ function AppointmentCreate() {
               </div>
 
               <div className={grid2}>
-                {topics.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={getTileStyle(t.id === topicId)}
-                    onClick={() => {
-                      setTopicId(t.id);
-                      setBranchId("");
-                      setSlotId("");
-                    }}
-                  >
-                    <div className="text-2xl">{t.icon}</div>
-                    <div className={`font-semibold ${t.id === topicId ? "text-blue-700" : "text-slate-900"}`}>
-                      {t.name}
-                    </div>
-                  </button>
-                ))}
+                {topics.map((t) => {
+                  const branchSupports =
+                    selectedBranch && selectedBranch.topicIds.includes(t.id);
+                  const disabled = Boolean(selectedBranch && !branchSupports);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={getTileStyle(t.id === topicId)}
+                      disabled={disabled}
+                      onClick={() => {
+                        if (disabled) return;
+                        setTopicId(t.id);
+                        setBranchId("");
+                        setSlotId("");
+                      }}
+                    >
+                      <div className="text-2xl">{t.icon}</div>
+                      <div
+                        className={`font-semibold ${
+                          t.id === topicId
+                            ? "text-blue-700"
+                            : disabled
+                            ? "text-slate-400"
+                            : "text-slate-900"
+                        }`}
+                      >
+                        {t.name}
+                      </div>
+                      {disabled ? (
+                        <div className="text-xs text-red-500 mt-1">Not available here</div>
+                      ) : null}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </Card>
@@ -189,6 +213,9 @@ function AppointmentCreate() {
                 <div className={h2}>2. Choose a branch</div>
                 <div className={muted}>
                   Showing branches available for: <span className="font-semibold text-slate-800">{selectedTopic?.name}</span>
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Icons under each branch indicate the services it supports. Other services are not offered here.
                 </div>
               </div>
 
@@ -210,6 +237,17 @@ function AppointmentCreate() {
                       {b.name}
                     </div>
                     <div className="text-xs text-slate-500">123 Market St • 0.8 mi</div>
+                    {/* show icons for services offered */}
+                    <div className="mt-1 flex gap-1 text-sm">
+                      {b.topicIds.map((tid) => {
+                        const t = topics.find((x) => x.id === tid);
+                        return t ? (
+                          <span key={tid} title={t.name} className="opacity-80">
+                            {t.icon}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
                   </button>
                 ))}
               </div>
