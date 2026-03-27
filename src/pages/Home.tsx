@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import Card from "../components/ui/Card";
 import { page, stack, grid3 } from "../styles/layout";
-import { button, buttonPrimary, buttonGhost, h1, muted } from "../styles/ui";
+import { button, muted } from "../styles/ui";
 
 function Home() {
   return (

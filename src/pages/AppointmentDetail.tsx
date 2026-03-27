@@ -13,6 +13,10 @@ function AppointmentDetail() {
   const { getAppointment } = useAppointments();
   const appt = getAppointment(appointmentId || "");
 
+  const lookupNumber = appt
+    ? appt.confirmationNumber ?? appt.id.replace(/\D/g, "").slice(-4).padStart(4, "0")
+    : "";
+
   if (!appt) {
     // if not found, navigate back to list
     navigate("/appointments");
@@ -34,8 +38,13 @@ function AppointmentDetail() {
 
         <Card>
           <div className={section}>
-            <div className="font-semibold">Appointment ID</div>
-            <div className={muted}>{appt.id}</div>
+            <div className="font-semibold">Confirmation Number</div>
+            <div className="text-2xl font-bold tracking-wide text-slate-900">{lookupNumber}</div>
+            <div className={muted}>Use this number if you need to change or cancel your appointment.</div>
+
+            <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              A confirmation email has been sent to {appt.customerEmail}.
+            </div>
 
             <div className={divider} />
 
@@ -49,12 +58,9 @@ function AppointmentDetail() {
             </div>
             <div className={muted}>Name: {appt.customerName}</div>
             <div className={muted}>Email: {appt.customerEmail}</div>
+            {appt.notes ? <div className={muted}>Notes: {appt.notes}</div> : null}
 
             <div className={divider} />
-
-            <div className={muted}>
-              Stretch goals like email confirmation and branch business hours can be added later.
-            </div>
           </div>
         </Card>
 

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 
 export type Appointment = {
   id: string;
+  confirmationNumber?: string;
   topicId: string;
   topicName: string;
   topicIcon: string;
@@ -12,12 +13,13 @@ export type Appointment = {
   timeLabel: string;
   customerName: string;
   customerEmail: string;
+  notes?: string;
   status: "Confirmed" | "Pending";
 };
 
 interface AppointmentContextType {
   appointments: Appointment[];
-  addAppointment: (a: Omit<Appointment, "id" | "status">) => Appointment;
+  addAppointment: (a: Omit<Appointment, "id" | "status" | "confirmationNumber">) => Appointment;
   removeAppointment: (id: string) => void;
   getAppointment: (id: string) => Appointment | undefined;
 }
@@ -25,20 +27,52 @@ interface AppointmentContextType {
 const STORAGE_KEY = "appointments";
 const AppointmentContext = createContext<AppointmentContextType | null>(null);
 
-export function AppointmentProvider({ children }: { children: React.ReactNode }) {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+function toDisplayConfirmationNumber(value: number) {
+  return value.toString().padStart(4, "0");
+}
 
-  // load from localStorage
-  useEffect(() => {
+function nextConfirmationNumber(current: Appointment[]) {
+  const maxValue = current.reduce((max, item) => {
+    const source = item.confirmationNumber ?? item.id;
+    const digits = source.replace(/\D/g, "");
+    if (!digits) return max;
+    const parsed = Number.parseInt(digits, 10);
+    if (Number.isNaN(parsed)) return max;
+    return Math.max(max, parsed);
+  }, 999);
+
+  return toDisplayConfirmationNumber(maxValue + 1);
+}
+
+function normalizeStoredAppointments(stored: unknown): Appointment[] {
+  if (!Array.isArray(stored)) return [];
+  return stored
+    .filter((item): item is Appointment => Boolean(item && typeof item === "object"))
+    .map((item) => {
+      const fallbackDigits = String(item.id ?? "").replace(/\D/g, "");
+      const fallback = fallbackDigits
+        ? toDisplayConfirmationNumber(Number.parseInt(fallbackDigits.slice(-4), 10) || 1000)
+        : "1000";
+
+      return {
+        ...item,
+        confirmationNumber: item.confirmationNumber ?? fallback,
+      };
+    });
+}
+
+export function AppointmentProvider({ children }: { children: React.ReactNode }) {
+  const [appointments, setAppointments] = useState<Appointment[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setAppointments(JSON.parse(stored));
+        return normalizeStoredAppointments(JSON.parse(stored));
       }
     } catch (err) {
       console.warn("Failed to load appointments from storage", err);
     }
-  }, []);
+    return [];
+  });
 
   // persist on change
   useEffect(() => {
@@ -49,15 +83,17 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
     }
   }, [appointments]);
 
-  const addAppointment = useCallback((a: Omit<Appointment, "id" | "status">) => {
+  const addAppointment = useCallback((a: Omit<Appointment, "id" | "status" | "confirmationNumber">) => {
+    const confirmationNumber = nextConfirmationNumber(appointments);
     const newAppt: Appointment = {
       ...a,
-      id: crypto.randomUUID(),
+      id: confirmationNumber,
+      confirmationNumber,
       status: "Confirmed",
     };
     setAppointments((prev) => [...prev, newAppt]);
     return newAppt;
-  }, []);
+  }, [appointments]);
 
   const removeAppointment = useCallback((id: string) => {
     setAppointments((prev) => prev.filter((a) => a.id !== id));
@@ -77,6 +113,7 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppointments() {
   const ctx = useContext(AppointmentContext);
   if (!ctx) {

@@ -9,6 +9,7 @@ import { useAppointments } from "../state/appointments";
 // we no longer need mock data; type reexported for clarity
 export type Appointment = {
   id: string;
+  confirmationNumber?: string;
   topicName: string;
   branchName: string;
   dateLabel: string;
@@ -19,6 +20,13 @@ export type Appointment = {
 
 function AppointmentList() {
   const { appointments, removeAppointment } = useAppointments();
+
+  const getReferenceNumber = (appointmentId: string, confirmationNumber?: string) => {
+    if (confirmationNumber) return confirmationNumber;
+    const digits = appointmentId.replace(/\D/g, "");
+    if (!digits) return "0000";
+    return digits.slice(-4).padStart(4, "0");
+  };
 
   return (
     <div className={page}>
@@ -48,19 +56,6 @@ function AppointmentList() {
           <div className={grid2}>
             {appointments.map((a) => (
               <Card key={a.id}>
-                <div className="relative">
-                  <button
-                    className="absolute top-2 right-2 text-slate-400 hover:text-slate-600"
-                    title="Remove appointment"
-                    onClick={() => {
-                      if (window.confirm("Remove this appointment?")) {
-                        removeAppointment(a.id);
-                      }
-                    }}
-                  >
-                    ✖️
-                  </button>
-                </div>
                 <div className="flex items-start justify-between">
                   <div className="flex flex-col gap-1">
                     <span className={pill + " bg-blue-50 text-blue-700 border-blue-100 mb-2 w-fit"}>
@@ -76,9 +71,24 @@ function AppointmentList() {
                     <div className="text-xs text-slate-500">{a.dateLabel}</div>
                   </div>
                 </div>
+
+                <div className="mt-3 flex justify-end">
+                  <button
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-base text-red-700 transition-colors hover:bg-red-100"
+                    title="Cancel appointment"
+                    aria-label={`Cancel appointment ${a.topicName}`}
+                    onClick={() => {
+                      if (window.confirm("Cancel this appointment?")) {
+                        removeAppointment(a.id);
+                      }
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
                 
                 <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-                   <div className="text-xs text-slate-400">Ref: #{a.id.toUpperCase()}</div>
+                   <div className="text-xs text-slate-500">Confirmation #: {getReferenceNumber(a.id, a.confirmationNumber)}</div>
                    <Link to={`/appointments/${a.id}`} className="text-sm font-semibold text-blue-600 hover:text-blue-800">
                     View Details →
                   </Link>

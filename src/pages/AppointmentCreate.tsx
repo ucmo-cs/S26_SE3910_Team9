@@ -14,6 +14,11 @@ type Topic = { id: string; name: string; icon: string };
 type Branch = { id: string; name: string; topicIds: string[]; slotIds: string[] };
 // slots are global and booked state is derived from appointments
 type Slot = { id: string; dateLabel: string; timeLabel: string };
+type TopicInfo = {
+  overview: string;
+  typicalHelp: string;
+  suggestedDuration: string;
+};
 
 // ADDED: More options (Investments, Notary)
 const topics: Topic[] = [
@@ -23,6 +28,34 @@ const topics: Topic[] = [
   { id: "t4", name: "Wealth Management", icon: "📈" },
   { id: "t5", name: "Notary Services", icon: "✒️" }
 ];
+
+const topicInfoById: Record<string, TopicInfo> = {
+  t1: {
+    overview: "Open new checking, savings, or student accounts with the right product mix.",
+    typicalHelp: "Identity verification, account options, and online banking setup.",
+    suggestedDuration: "30 minutes",
+  },
+  t2: {
+    overview: "Get support for card issues, replacements, fraud review, or spending controls.",
+    typicalHelp: "Card activation, disputed transactions, and limit/payment guidance.",
+    suggestedDuration: "20-30 minutes",
+  },
+  t3: {
+    overview: "Discuss mortgage, auto, or personal loan options and qualification steps.",
+    typicalHelp: "Rate comparison, required documents, and next-step planning.",
+    suggestedDuration: "45 minutes",
+  },
+  t4: {
+    overview: "Review savings goals, investment planning, and risk-aligned portfolio options.",
+    typicalHelp: "Goal planning, account types, and long-term strategy conversations.",
+    suggestedDuration: "45-60 minutes",
+  },
+  t5: {
+    overview: "In-branch notarization support for eligible forms and official signatures.",
+    typicalHelp: "Document checks, signer verification, and witness requirements.",
+    suggestedDuration: "15-30 minutes",
+  },
+};
 
 // ADDED: New 'North Branch'
 const branches: Branch[] = [
@@ -58,6 +91,8 @@ function AppointmentCreate() {
 
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [appointmentNotes, setAppointmentNotes] = useState("");
+  const [infoTopicId, setInfoTopicId] = useState("");
 
   const { appointments, addAppointment } = useAppointments();
 
@@ -76,6 +111,7 @@ function AppointmentCreate() {
   }, [topicId]);
 
   const selectedBranch = useMemo(() => branches.find((b) => b.id === branchId) ?? null, [branchId]);
+  const selectedInfoTopic = useMemo(() => topics.find((t) => t.id === infoTopicId) ?? null, [infoTopicId]);
 
   // compute what slots are actually available by checking branch and booked appointments
   const availableSlots = useMemo(() => {
@@ -122,6 +158,7 @@ function AppointmentCreate() {
       timeLabel: selectedSlot.timeLabel,
       customerName: customerName.trim(),
       customerEmail: customerEmail.trim(),
+      notes: appointmentNotes.trim(),
     });
 
     // reset form just in case user returns
@@ -130,6 +167,8 @@ function AppointmentCreate() {
     setSlotId("");
     setCustomerName("");
     setCustomerEmail("");
+    setAppointmentNotes("");
+    setInfoTopicId("");
 
     navigate(`/appointments/${newAppt.id}`);
   }
@@ -215,19 +254,27 @@ function AppointmentCreate() {
                   Showing branches available for: <span className="font-semibold text-slate-800">{selectedTopic?.name}</span>
                 </div>
                 <div className="text-xs text-slate-500 mt-1">
-                  Icons under each branch indicate the services it supports. Other services are not offered here.
+                  Click any service icon to see details without leaving this step.
                 </div>
               </div>
 
               <div className={grid2}>
                 {availableBranches.map((b) => (
-                  <button
+                  <div
                     key={b.id}
-                    type="button"
                     className={getTileStyle(b.id === branchId)}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       setBranchId(b.id);
                       setSlotId("");
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setBranchId(b.id);
+                        setSlotId("");
+                      }
                     }}
                   >
                      <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500">
@@ -242,15 +289,58 @@ function AppointmentCreate() {
                       {b.topicIds.map((tid) => {
                         const t = topics.find((x) => x.id === tid);
                         return t ? (
-                          <span key={tid} title={t.name} className="opacity-80">
+                          <button
+                            key={tid}
+                            type="button"
+                            title={`Learn about ${t.name}`}
+                            aria-label={`Learn about ${t.name}`}
+                            className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-sm transition-colors ${
+                              infoTopicId === tid
+                                ? "border-blue-300 bg-blue-50"
+                                : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50"
+                            }`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setInfoTopicId((current) => (current === tid ? "" : tid));
+                            }}
+                          >
                             {t.icon}
-                          </span>
+                          </button>
                         ) : null;
                       })}
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
+
+              {selectedInfoTopic ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="font-semibold text-blue-900">
+                      {selectedInfoTopic.icon} {selectedInfoTopic.name}
+                    </div>
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-blue-700 hover:text-blue-900"
+                      onClick={() => setInfoTopicId("")}
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <div className="mt-2 text-sm text-blue-900">
+                    {topicInfoById[selectedInfoTopic.id]?.overview}
+                  </div>
+                  <div className="mt-2 text-sm text-blue-800">
+                    Typical help: {topicInfoById[selectedInfoTopic.id]?.typicalHelp}
+                  </div>
+                  <div className="mt-1 text-sm text-blue-800">
+                    Suggested appointment length: {topicInfoById[selectedInfoTopic.id]?.suggestedDuration}
+                  </div>
+                  <div className="mt-2 text-xs text-blue-700">
+                    Your selected appointment topic remains {selectedTopic?.name ?? "unchanged"}.
+                  </div>
+                </div>
+              ) : null}
 
               {availableBranches.length === 0 ? (
                 <div className={emptyState}>
@@ -317,6 +407,16 @@ function AppointmentCreate() {
                     onChange={(e) => setCustomerEmail(e.target.value)}
                   />
                 </div>
+
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <label className={label}>Notes for your banker (optional)</label>
+                  <textarea
+                    className={`${input} min-h-28 resize-y`}
+                    placeholder="Add any context that helps us prepare, such as account type, documents, or questions."
+                    value={appointmentNotes}
+                    onChange={(e) => setAppointmentNotes(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           </Card>
@@ -327,6 +427,9 @@ function AppointmentCreate() {
             <div className={section}>
               <div className={h2}>5. Review & Confirm</div>
               <div className={muted}>Please double check your appointment details.</div>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                After you confirm, we will send an email confirmation and generate a simple lookup number.
+              </div>
 
               <div className="rounded-xl bg-slate-50 p-6 border border-slate-100">
                 <div className="flex flex-col gap-4">
@@ -354,6 +457,17 @@ function AppointmentCreate() {
                       {customerName}<br/><span className="text-slate-500 font-normal">{customerEmail}</span>
                     </div>
                   </div>
+                  {appointmentNotes.trim().length > 0 ? (
+                    <>
+                      <div className={divider} />
+                      <div className={rowBetween}>
+                        <div className="text-sm text-slate-500">Notes</div>
+                        <div className="font-medium text-slate-900 text-right max-w-[70%] break-words">
+                          {appointmentNotes.trim()}
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </div>
 
