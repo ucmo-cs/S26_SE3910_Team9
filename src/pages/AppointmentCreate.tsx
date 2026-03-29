@@ -10,6 +10,9 @@ import { button, buttonPrimary, buttonGhost, divider, h2, input, label, muted, e
 // use shared appointment state
 import { useAppointments } from "../state/appointments";
 
+// Email service
+import { sendAppointmentConfirmation } from "../services/emailService";
+
 type Topic = { id: string; name: string; icon: string };
 type Branch = { id: string; name: string; topicIds: string[]; slotIds: string[] };
 // slots are global and booked state is derived from appointments
@@ -160,6 +163,31 @@ function AppointmentCreate() {
       customerEmail: customerEmail.trim(),
       notes: appointmentNotes.trim(),
     });
+
+    // Send confirmation email
+    sendAppointmentConfirmation({
+      customerEmail: customerEmail.trim(),
+      customerName: customerName.trim(),
+      topicName: selectedTopic.name,
+      branchName: selectedBranch.name,
+      dateLabel: selectedSlot.dateLabel,
+      timeLabel: selectedSlot.timeLabel,
+      confirmationNumber: newAppt.confirmationNumber || newAppt.id,
+    })
+      .then((result) => {
+        if (result.success) {
+          console.log('✅ Confirmation email sent successfully');
+          if (result.previewUrl) {
+            // In development, you can open the preview
+            console.log('📧 Email preview:', result.previewUrl);
+          }
+        } else {
+          console.error('⚠️ Failed to send email:', result.error);
+        }
+      })
+      .catch((err) => {
+        console.error('⚠️ Error sending email:', err);
+      });
 
     // reset form just in case user returns
     setTopicId("");
