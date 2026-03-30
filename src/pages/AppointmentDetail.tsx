@@ -30,7 +30,7 @@ function AppointmentDetail() {
           title="Appointment Confirmation"
           subtitle="Here's the information for your appointment."
           right={
-            <Link to="/appointments" className={button}>
+            <Link to="/appointments" className={`${button} text-slate-700 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800`}>
               Back to List
             </Link>
           }
@@ -38,17 +38,17 @@ function AppointmentDetail() {
 
         <Card>
           <div className={section}>
-            <div className="font-semibold">Confirmation Number</div>
-            <div className="text-2xl font-bold tracking-wide text-slate-900">{lookupNumber}</div>
+            <div className="font-semibold text-slate-900 dark:text-slate-100">Confirmation Number</div>
+            <div className="text-2xl font-bold tracking-wide text-slate-900 dark:text-slate-100">{lookupNumber}</div>
             <div className={muted}>Use this number if you need to change or cancel your appointment.</div>
 
-            <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+            <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-200">
               A confirmation email has been sent to {appt.customerEmail}.
             </div>
 
             <div className={divider} />
 
-            <div className="font-semibold">Summary</div>
+            <div className="font-semibold text-slate-900 dark:text-slate-100">Summary</div>
             <div className={muted}>
               Topic: {appt.topicIcon} {appt.topicName}
             </div>
@@ -64,7 +64,7 @@ function AppointmentDetail() {
           </div>
         </Card>
 
-        <Link to="/appointments/create" className={button}>
+        <Link to="/appointments/create" className={`${button} text-slate-700 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800`}>
           Book Another Appointment
         </Link>
       </div>

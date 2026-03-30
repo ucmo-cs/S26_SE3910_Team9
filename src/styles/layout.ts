@@ -1,5 +1,5 @@
 
-export const appBg = "min-h-screen bg-slate-50 from-blue-50 to-white bg-gradient-to-br text-slate-800 font-sans selection:bg-blue-100";
+export const appBg = "min-h-screen bg-gradient-to-br from-blue-50 to-white text-slate-800 font-sans selection:bg-blue-100 dark:from-slate-950 dark:to-slate-900 dark:text-slate-100 dark:selection:bg-blue-900";
 
 export const page = "mx-auto w-full max-w-screen-lg px-4 py-8 md:py-12";
 export const stack = "flex flex-col gap-6";

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
@@ -39,8 +39,8 @@ const topicInfoById: Record<string, TopicInfo> = {
     suggestedDuration: "30 minutes",
   },
   t2: {
-    overview: "Get support for card issues, replacements, fraud review, or spending controls.",
     typicalHelp: "Card activation, disputed transactions, and limit/payment guidance.",
+    overview: "Get support for card issues, replacements, fraud review, or spending controls.",
     suggestedDuration: "20-30 minutes",
   },
   t3: {
@@ -81,6 +81,7 @@ const allSlots: Slot[] = [
 ];
 
 type StepId = "topic" | "branch" | "time" | "details" | "confirm";
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function AppointmentCreate() {
   const navigate = useNavigate();
@@ -95,6 +96,10 @@ function AppointmentCreate() {
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [appointmentNotes, setAppointmentNotes] = useState("");
+  const [showAllBranches, setShowAllBranches] = useState(false);
+  const [nameTouched, setNameTouched] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [infoTopicId, setInfoTopicId] = useState("");
 
   const { appointments, addAppointment } = useAppointments();
@@ -112,9 +117,40 @@ function AppointmentCreate() {
     if (!topicId) return [];
     return branches.filter((b) => b.topicIds.includes(topicId));
   }, [topicId]);
+  const visibleBranches = useMemo(() => {
+    if (!topicId) return [];
+    return showAllBranches ? branches : availableBranches;
+  }, [topicId, showAllBranches, availableBranches]);
 
   const selectedBranch = useMemo(() => branches.find((b) => b.id === branchId) ?? null, [branchId]);
+  const selectedBranchSupportsTopic = useMemo(() => {
+    if (!selectedBranch || !topicId) return false;
+    return selectedBranch.topicIds.includes(topicId);
+  }, [selectedBranch, topicId]);
   const selectedInfoTopic = useMemo(() => topics.find((t) => t.id === infoTopicId) ?? null, [infoTopicId]);
+  const isNameValid = customerName.trim().length > 0;
+  const isEmailValid = emailPattern.test(customerEmail.trim());
+  const showNameError = nameTouched && !isNameValid;
+  const showEmailError = emailTouched && !isEmailValid;
+  const hasUnsavedChanges =
+    Boolean(topicId) ||
+    Boolean(branchId) ||
+    Boolean(slotId) ||
+    customerName.trim().length > 0 ||
+    customerEmail.trim().length > 0 ||
+    appointmentNotes.trim().length > 0;
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   // compute what slots are actually available by checking branch and booked appointments
   const availableSlots = useMemo(() => {
@@ -143,13 +179,22 @@ function AppointmentCreate() {
 
   const canNext =
     (step === "topic" && !!topicId) ||
-    (step === "branch" && !!branchId) ||
+    (step === "branch" && !!branchId && selectedBranchSupportsTopic) ||
     (step === "time" && !!slotId) ||
-    (step === "details" && customerName.trim().length > 0 && customerEmail.trim().length > 0) ||
+    (step === "details" && isNameValid && isEmailValid) ||
     step === "confirm";
 
-  function submitMock() {
+  function confirmDiscardProgress() {
+    if (!hasUnsavedChanges) return true;
+    return window.confirm("You have unsaved changes. Leave this page and lose your progress?");
+  }
+
+  async function submitMock() {
     if (!selectedTopic || !selectedBranch || !selectedSlot) return;
+    if (!isNameValid || !isEmailValid) return;
+
+    setIsSubmitting(true);
+
     const newAppt = addAppointment({
       topicId: selectedTopic.id,
       topicName: selectedTopic.name,
@@ -165,29 +210,25 @@ function AppointmentCreate() {
     });
 
     // Send confirmation email
-    sendAppointmentConfirmation({
-      customerEmail: customerEmail.trim(),
-      customerName: customerName.trim(),
-      topicName: selectedTopic.name,
-      branchName: selectedBranch.name,
-      dateLabel: selectedSlot.dateLabel,
-      timeLabel: selectedSlot.timeLabel,
-      confirmationNumber: newAppt.confirmationNumber || newAppt.id,
-    })
-      .then((result) => {
-        if (result.success) {
-          console.log('✅ Confirmation email sent successfully');
-          if (result.previewUrl) {
-            // In development, you can open the preview
-            console.log('📧 Email preview:', result.previewUrl);
-          }
-        } else {
-          console.error('⚠️ Failed to send email:', result.error);
-        }
-      })
-      .catch((err) => {
-        console.error('⚠️ Error sending email:', err);
+    try {
+      const result = await sendAppointmentConfirmation({
+        customerEmail: customerEmail.trim(),
+        customerName: customerName.trim(),
+        topicName: selectedTopic.name,
+        branchName: selectedBranch.name,
+        dateLabel: selectedSlot.dateLabel,
+        timeLabel: selectedSlot.timeLabel,
+        confirmationNumber: newAppt.confirmationNumber || newAppt.id,
       });
+
+      if (result.success) {
+        console.log("Confirmation email sent successfully");
+      } else {
+        console.error("Failed to send email:", result.error);
+      }
+    } catch (err) {
+      console.error("Error sending email:", err);
+    }
 
     // reset form just in case user returns
     setTopicId("");
@@ -196,7 +237,10 @@ function AppointmentCreate() {
     setCustomerName("");
     setCustomerEmail("");
     setAppointmentNotes("");
+    setNameTouched(false);
+    setEmailTouched(false);
     setInfoTopicId("");
+    setIsSubmitting(false);
 
     navigate(`/appointments/${newAppt.id}`);
   }
@@ -205,8 +249,8 @@ function AppointmentCreate() {
   const getTileStyle = (isSelected: boolean) =>
     `flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all ${
       isSelected
-        ? "border-blue-600 bg-blue-50 ring-2 ring-blue-600 ring-offset-2 shadow-md"
-        : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-lg hover:-translate-y-1"
+        ? "border-blue-600 bg-blue-50 ring-2 ring-blue-600 ring-offset-2 shadow-md dark:border-blue-400 dark:bg-slate-800/90 dark:ring-blue-400/70 dark:ring-offset-0 dark:shadow-sm dark:shadow-black/30"
+        : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-lg hover:-translate-y-1 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-400/70 dark:hover:shadow-sm dark:hover:shadow-black/25"
     }`;
 
   return (
@@ -216,7 +260,14 @@ function AppointmentCreate() {
           title="Book an Appointment"
           subtitle="Follow the steps below to schedule a meeting with our banking specialists."
           right={
-            <Link to="/appointments" className={buttonGhost}>
+            <Link
+              to="/appointments"
+              className={buttonGhost}
+              onClick={(event) => {
+                if (confirmDiscardProgress()) return;
+                event.preventDefault();
+              }}
+            >
               Cancel
             </Link>
           }
@@ -229,46 +280,92 @@ function AppointmentCreate() {
             <div className={section}>
               <div>
                 <div className={h2}>1. What can we help you with?</div>
-                <div className={muted}>Select a topic so we can find the right specialist for you.</div>
+                <div className={muted}>Choose a topic. Tap the info icon to preview details.</div>
               </div>
 
               <div className={grid2}>
                 {topics.map((t) => {
-                  const branchSupports =
-                    selectedBranch && selectedBranch.topicIds.includes(t.id);
-                  const disabled = Boolean(selectedBranch && !branchSupports);
                   return (
-                    <button
+                    <div
                       key={t.id}
-                      type="button"
                       className={getTileStyle(t.id === topicId)}
-                      disabled={disabled}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
-                        if (disabled) return;
                         setTopicId(t.id);
                         setBranchId("");
                         setSlotId("");
                       }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setTopicId(t.id);
+                          setBranchId("");
+                          setSlotId("");
+                        }
+                      }}
                     >
-                      <div className="text-2xl">{t.icon}</div>
+                      <div className="flex w-full items-start justify-between gap-3">
+                        <div className="text-2xl">{t.icon}</div>
+                        <button
+                          type="button"
+                          title={`Learn about ${t.name}`}
+                          aria-label={`Learn about ${t.name}`}
+                          className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
+                            infoTopicId === t.id
+                              ? "border-blue-300 bg-blue-50 text-blue-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                          }`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setInfoTopicId((current) => (current === t.id ? "" : t.id));
+                          }}
+                        >
+                          i
+                        </button>
+                      </div>
                       <div
                         className={`font-semibold ${
                           t.id === topicId
-                            ? "text-blue-700"
-                            : disabled
-                            ? "text-slate-400"
-                            : "text-slate-900"
+                            ? "text-blue-700 dark:text-blue-300"
+                            : "text-slate-900 dark:text-slate-100"
                         }`}
                       >
                         {t.name}
                       </div>
-                      {disabled ? (
-                        <div className="text-xs text-red-500 mt-1">Not available here</div>
-                      ) : null}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
+
+              {selectedInfoTopic ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/35">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="font-semibold text-blue-900 dark:text-blue-100">
+                      {selectedInfoTopic.icon} {selectedInfoTopic.name}
+                    </div>
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-blue-700 hover:text-blue-900 dark:text-blue-200 dark:hover:text-blue-100"
+                      onClick={() => setInfoTopicId("")}
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <div className="mt-2 text-sm text-blue-900 dark:text-blue-100">
+                    {topicInfoById[selectedInfoTopic.id]?.overview}
+                  </div>
+                  <div className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+                    Typical help: {topicInfoById[selectedInfoTopic.id]?.typicalHelp}
+                  </div>
+                  <div className="mt-1 text-sm text-blue-800 dark:text-blue-200">
+                    Suggested appointment length: {topicInfoById[selectedInfoTopic.id]?.suggestedDuration}
+                  </div>
+                  <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                    Viewing details does not change your selected topic.
+                  </div>
+                </div>
+              ) : null}
             </div>
           </Card>
         ) : null}
@@ -279,39 +376,59 @@ function AppointmentCreate() {
               <div>
                 <div className={h2}>2. Choose a branch</div>
                 <div className={muted}>
-                  Showing branches available for: <span className="font-semibold text-slate-800">{selectedTopic?.name}</span>
+                  Showing branches available for: <span className="font-semibold text-slate-800 dark:text-slate-100">{selectedTopic?.name}</span>
                 </div>
-                <div className="text-xs text-slate-500 mt-1">
-                  Click any service icon to see details without leaving this step.
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-xs text-slate-500 dark:text-slate-300">
+                    Click any service icon to see details without leaving this step.
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    onClick={() => setShowAllBranches((current) => !current)}
+                  >
+                    {showAllBranches ? "Show compatible only" : "Show all branches"}
+                  </button>
                 </div>
               </div>
 
               <div className={grid2}>
-                {availableBranches.map((b) => (
+                {visibleBranches.map((b) => {
+                  const supportsSelectedTopic = b.topicIds.includes(topicId);
+                  const isDisabled = !supportsSelectedTopic;
+                  return (
                   <div
                     key={b.id}
-                    className={getTileStyle(b.id === branchId)}
+                    className={`${getTileStyle(b.id === branchId)} ${isDisabled ? "opacity-70" : ""}`}
                     role="button"
-                    tabIndex={0}
+                    tabIndex={isDisabled ? -1 : 0}
+                    aria-disabled={isDisabled}
                     onClick={() => {
+                      if (isDisabled) return;
                       setBranchId(b.id);
                       setSlotId("");
                     }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
+                        if (isDisabled) return;
                         setBranchId(b.id);
                         setSlotId("");
                       }
                     }}
                   >
-                     <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                     <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                         📍
                      </div>
-                    <div className={`font-semibold ${b.id === branchId ? "text-blue-700" : "text-slate-900"}`}>
+                    <div className={`font-semibold ${b.id === branchId ? "text-blue-700 dark:text-blue-300" : "text-slate-900 dark:text-slate-100"}`}>
                       {b.name}
                     </div>
-                    <div className="text-xs text-slate-500">123 Market St • 0.8 mi</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-300">123 Market St • 0.8 mi</div>
+                    {!supportsSelectedTopic ? (
+                      <div className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                        Service not available at this branch.
+                      </div>
+                    ) : null}
                     {/* show icons for services offered */}
                     <div className="mt-1 flex gap-1 text-sm">
                       {b.topicIds.map((tid) => {
@@ -324,8 +441,8 @@ function AppointmentCreate() {
                             aria-label={`Learn about ${t.name}`}
                             className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-sm transition-colors ${
                               infoTopicId === tid
-                                ? "border-blue-300 bg-blue-50"
-                                : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50"
+                                ? "border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/40"
+                                : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-700 dark:hover:bg-blue-900/35"
                             }`}
                             onClick={(event) => {
                               event.stopPropagation();
@@ -338,39 +455,40 @@ function AppointmentCreate() {
                       })}
                     </div>
                   </div>
-                ))}
+                );
+                })}
               </div>
 
               {selectedInfoTopic ? (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/35">
                   <div className="flex items-center justify-between gap-4">
-                    <div className="font-semibold text-blue-900">
+                    <div className="font-semibold text-blue-900 dark:text-blue-100">
                       {selectedInfoTopic.icon} {selectedInfoTopic.name}
                     </div>
                     <button
                       type="button"
-                      className="text-sm font-medium text-blue-700 hover:text-blue-900"
+                      className="text-sm font-medium text-blue-700 hover:text-blue-900 dark:text-blue-200 dark:hover:text-blue-100"
                       onClick={() => setInfoTopicId("")}
                     >
                       Close
                     </button>
                   </div>
-                  <div className="mt-2 text-sm text-blue-900">
+                  <div className="mt-2 text-sm text-blue-900 dark:text-blue-100">
                     {topicInfoById[selectedInfoTopic.id]?.overview}
                   </div>
-                  <div className="mt-2 text-sm text-blue-800">
+                  <div className="mt-2 text-sm text-blue-800 dark:text-blue-200">
                     Typical help: {topicInfoById[selectedInfoTopic.id]?.typicalHelp}
                   </div>
-                  <div className="mt-1 text-sm text-blue-800">
+                  <div className="mt-1 text-sm text-blue-800 dark:text-blue-200">
                     Suggested appointment length: {topicInfoById[selectedInfoTopic.id]?.suggestedDuration}
                   </div>
-                  <div className="mt-2 text-xs text-blue-700">
+                  <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
                     Your selected appointment topic remains {selectedTopic?.name ?? "unchanged"}.
                   </div>
                 </div>
               ) : null}
 
-              {availableBranches.length === 0 ? (
+              {!showAllBranches && availableBranches.length === 0 ? (
                 <div className={emptyState}>
                   <div className="text-2xl mb-2">😔</div>
                   No branches support "{selectedTopic?.name}" at this time.
@@ -386,7 +504,7 @@ function AppointmentCreate() {
               <div>
                 <div className={h2}>3. Select a time</div>
                 <div className={muted}>
-                  At <span className="font-semibold text-slate-800">{selectedBranch?.name}</span>
+                  At <span className="font-semibold text-slate-800 dark:text-slate-100">{selectedBranch?.name}</span>
                 </div>
               </div>
 
@@ -398,8 +516,8 @@ function AppointmentCreate() {
                     className={getTileStyle(s.id === slotId)}
                     onClick={() => setSlotId(s.id)}
                   >
-                    <div className="font-semibold text-slate-900">{s.timeLabel}</div>
-                    <div className="text-sm text-slate-500">{s.dateLabel}</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">{s.timeLabel}</div>
+                    <div className="text-sm text-slate-500 dark:text-slate-300">{s.dateLabel}</div>
                   </button>
                 ))}
               </div>
@@ -419,21 +537,28 @@ function AppointmentCreate() {
                 <div className="flex flex-col gap-2">
                   <label className={label}>Full Name</label>
                   <input 
-                    className={input} 
+                    className={`${input} ${showNameError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100 dark:border-rose-500 dark:focus:ring-rose-900/40" : ""}`}
                     placeholder="e.g. Jane Doe"
                     value={customerName} 
-                    onChange={(e) => setCustomerName(e.target.value)} 
+                    autoComplete="name"
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    onBlur={() => setNameTouched(true)}
                   />
+                  {showNameError ? <div className="text-xs text-rose-600 dark:text-rose-300">Please enter your full name.</div> : null}
                 </div>
 
                 <div className="flex flex-col gap-2">
                   <label className={label}>Email Address</label>
                   <input
-                    className={input}
+                    type="email"
+                    className={`${input} ${showEmailError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100 dark:border-rose-500 dark:focus:ring-rose-900/40" : ""}`}
                     placeholder="e.g. jane@example.com"
                     value={customerEmail}
+                    autoComplete="email"
                     onChange={(e) => setCustomerEmail(e.target.value)}
+                    onBlur={() => setEmailTouched(true)}
                   />
+                  {showEmailError ? <div className="text-xs text-rose-600 dark:text-rose-300">Enter a valid email address.</div> : null}
                 </div>
 
                 <div className="flex flex-col gap-2 md:col-span-2">
@@ -455,42 +580,42 @@ function AppointmentCreate() {
             <div className={section}>
               <div className={h2}>5. Review & Confirm</div>
               <div className={muted}>Please double check your appointment details.</div>
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950/35 dark:text-blue-200">
                 After you confirm, we will send an email confirmation and generate a simple lookup number.
               </div>
 
-              <div className="rounded-xl bg-slate-50 p-6 border border-slate-100">
+              <div className="rounded-xl bg-slate-50 p-6 border border-slate-100 dark:border-slate-700 dark:bg-slate-800/70">
                 <div className="flex flex-col gap-4">
                   <div className={rowBetween}>
-                    <div className="text-sm text-slate-500">Service</div>
-                    <div className="font-medium text-slate-900 flex items-center gap-2">
+                    <div className="text-sm text-slate-500 dark:text-slate-300">Service</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
                         <span>{selectedTopic?.icon}</span>
                         {selectedTopic?.name}
                     </div>
                   </div>
                   <div className={divider} />
                   <div className={rowBetween}>
-                    <div className="text-sm text-slate-500">Location</div>
-                    <div className="font-medium text-slate-900">{selectedBranch?.name}</div>
+                    <div className="text-sm text-slate-500 dark:text-slate-300">Location</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{selectedBranch?.name}</div>
                   </div>
                   <div className={divider} />
                   <div className={rowBetween}>
-                    <div className="text-sm text-slate-500">Date & Time</div>
-                    <div className="font-medium text-slate-900">{selectedSlot?.dateLabel} at {selectedSlot?.timeLabel}</div>
+                    <div className="text-sm text-slate-500 dark:text-slate-300">Date & Time</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{selectedSlot?.dateLabel} at {selectedSlot?.timeLabel}</div>
                   </div>
                   <div className={divider} />
                   <div className={rowBetween}>
-                    <div className="text-sm text-slate-500">Contact</div>
-                    <div className="font-medium text-slate-900 text-right">
-                      {customerName}<br/><span className="text-slate-500 font-normal">{customerEmail}</span>
+                    <div className="text-sm text-slate-500 dark:text-slate-300">Contact</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100 text-right">
+                      {customerName}<br/><span className="text-slate-500 dark:text-slate-300 font-normal">{customerEmail}</span>
                     </div>
                   </div>
                   {appointmentNotes.trim().length > 0 ? (
                     <>
                       <div className={divider} />
                       <div className={rowBetween}>
-                        <div className="text-sm text-slate-500">Notes</div>
-                        <div className="font-medium text-slate-900 text-right max-w-[70%] break-words">
+                        <div className="text-sm text-slate-500 dark:text-slate-300">Notes</div>
+                        <div className="font-medium text-slate-900 dark:text-slate-100 text-right max-w-[70%] break-words">
                           {appointmentNotes.trim()}
                         </div>
                       </div>
@@ -499,9 +624,22 @@ function AppointmentCreate() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-4">
-                <button type="button" className={`${button} ${buttonPrimary} w-full md:w-auto`} onClick={submitMock}>
-                  Confirm Appointment
+              <div className="flex items-center justify-between gap-3 pt-4">
+                <button
+                  type="button"
+                  className={`${button} ${buttonGhost}`}
+                  onClick={goBack}
+                  disabled={isSubmitting}
+                >
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  className={`${button} ${buttonPrimary} w-full md:w-auto`}
+                  onClick={submitMock}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Booking..." : "Confirm Appointment"}
                 </button>
               </div>
             </div>

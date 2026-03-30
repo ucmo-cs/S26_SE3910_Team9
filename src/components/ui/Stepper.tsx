@@ -7,7 +7,7 @@ type Props = {
 
 function Stepper(props: Props) {
   return (
-    <div className="w-full overflow-x-auto pb-2">
+    <div className="w-full overflow-x-auto overflow-y-visible py-2">
       <div className={`${row} min-w-max`}>
         {props.steps.map((s, idx) => {
           const isCurrent = idx === props.currentIndex;
@@ -15,15 +15,15 @@ function Stepper(props: Props) {
 
           // Dynamic styles based on state
           let circleStyle = "border-slate-300 bg-white text-slate-500";
-          let textStyle = "text-slate-500";
-          let lineStyle = "bg-slate-200";
+          let textStyle = "text-slate-500 dark:text-slate-300";
+          let lineStyle = "bg-slate-200 dark:bg-slate-700";
 
           if (isCurrent) {
-            circleStyle = "border-blue-600 bg-blue-600 text-white ring-4 ring-blue-100";
-            textStyle = "text-blue-700 font-semibold";
+            circleStyle = "border-blue-600 bg-blue-600 text-white ring-2 ring-blue-100 dark:ring-blue-900/50";
+            textStyle = "text-blue-700 font-semibold dark:text-blue-300";
           } else if (isDone) {
             circleStyle = "border-blue-600 bg-blue-600 text-white";
-            textStyle = "text-blue-600 font-medium";
+            textStyle = "text-blue-600 font-medium dark:text-blue-400";
             lineStyle = "bg-blue-600";
           }
 
