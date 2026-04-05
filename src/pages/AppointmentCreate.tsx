@@ -14,9 +14,9 @@ import { useAppointments } from "../state/appointments";
 import { sendAppointmentConfirmation } from "../services/emailService";
 
 type Topic = { id: string; name: string; icon: string };
-type Branch = { id: string; name: string; topicIds: string[]; slotIds: string[] };
+type Branch = { id: string; name: string; topicIds: string[] };
 // slots are global and booked state is derived from appointments
-type Slot = { id: string; dateLabel: string; timeLabel: string };
+type Slot = { id: string; dateISO: string; dateLabel: string; timeLabel: string; startAt: Date };
 type TopicInfo = {
   overview: string;
   typicalHelp: string;
@@ -62,23 +62,107 @@ const topicInfoById: Record<string, TopicInfo> = {
 
 // ADDED: New 'North Branch'
 const branches: Branch[] = [
-  { id: "b1", name: "Downtown Branch", topicIds: ["t1", "t2", "t3", "t4"], slotIds: ["s1", "s3", "s4", "s5"] },
-  { id: "b2", name: "Westside Branch", topicIds: ["t2", "t3", "t5"], slotIds: ["s2", "s6"] },
-  { id: "b3", name: "Eastside Branch", topicIds: ["t1", "t4", "t5"], slotIds: ["s7", "s8"] },
-  { id: "b4", name: "North Hills (HQ)", topicIds: ["t1", "t2", "t3", "t4", "t5"], slotIds: ["s1","s2","s3","s4","s5","s6","s7","s8"] },
+  { id: "b1", name: "Downtown Branch", topicIds: ["t1", "t2", "t3", "t4"] },
+  { id: "b2", name: "Westside Branch", topicIds: ["t2", "t3", "t5"] },
+  { id: "b3", name: "Eastside Branch", topicIds: ["t1", "t4", "t5"] },
+  { id: "b4", name: "North Hills (HQ)", topicIds: ["t1", "t2", "t3", "t4", "t5"] },
 ];
 
-// ADDED: More time slots (the branch-specific availability is tracked in branch.slotIds)
-const allSlots: Slot[] = [
-  { id: "s1", dateLabel: "Fri, Feb 20", timeLabel: "9:00 AM" },
-  { id: "s2", dateLabel: "Fri, Feb 20", timeLabel: "9:30 AM" },
-  { id: "s3", dateLabel: "Fri, Feb 20", timeLabel: "10:00 AM" },
-  { id: "s4", dateLabel: "Fri, Feb 20", timeLabel: "10:30 AM" },
-  { id: "s5", dateLabel: "Fri, Feb 20", timeLabel: "11:00 AM" },
-  { id: "s6", dateLabel: "Fri, Feb 20", timeLabel: "2:00 PM" },
-  { id: "s7", dateLabel: "Sat, Feb 21", timeLabel: "10:00 AM" },
-  { id: "s8", dateLabel: "Sat, Feb 21", timeLabel: "11:00 AM" },
-];
+const DATE_LABEL_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+const TIME_LABEL_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+const MONTH_YEAR_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  year: "numeric",
+});
+
+const BRANCH_DAYS: Record<string, number[]> = {
+  b1: [1, 2, 3, 4, 5],
+  b2: [1, 2, 3, 4, 5],
+  b3: [1, 2, 3, 4, 5, 6],
+  b4: [1, 2, 3, 4, 5, 6],
+};
+
+const BRANCH_TIMES: Record<string, string[]> = {
+  b1: ["09:00", "09:30", "10:00", "10:30", "11:00", "13:30", "14:00", "14:30", "15:00"],
+  b2: ["09:30", "10:00", "11:00", "13:00", "13:30", "14:00", "15:00"],
+  b3: ["10:00", "10:30", "11:00", "13:00", "13:30", "14:00"],
+  b4: ["09:00", "09:30", "10:00", "10:30", "11:00", "13:00", "13:30", "14:00", "14:30", "15:00", "16:00"],
+};
+
+const TOPIC_TIMES: Record<string, string[]> = {
+  t1: ["09:00", "09:30", "10:00", "10:30", "11:00", "13:00", "13:30", "14:00"],
+  t2: ["09:30", "10:00", "10:30", "11:00", "13:30", "14:00", "14:30", "15:00"],
+  t3: ["10:00", "11:00", "13:00", "14:00", "15:00"],
+  t4: ["10:00", "11:00", "13:30", "14:30", "15:00", "16:00"],
+  t5: ["09:30", "10:00", "10:30", "11:00", "13:00", "13:30"],
+};
+
+function toDateISO(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function fromDateISO(value: string) {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function withTime(baseDate: Date, hhmm: string) {
+  const [hour, minute] = hhmm.split(":").map(Number);
+  const next = new Date(baseDate);
+  next.setHours(hour || 0, minute || 0, 0, 0);
+  return next;
+}
+
+function buildAvailableSlots(topicId: string, branchId: string, bookedIds: Set<string>) {
+  if (!topicId || !branchId) return [];
+
+  const branchTimes = BRANCH_TIMES[branchId] ?? [];
+  const topicTimes = TOPIC_TIMES[topicId] ?? [];
+  const compatibleTimes = branchTimes.filter((time) => topicTimes.includes(time));
+  const branchOpenDays = BRANCH_DAYS[branchId] ?? [1, 2, 3, 4, 5];
+  const now = new Date();
+  const minLeadTime = 30 * 60 * 1000;
+
+  const generated: Slot[] = [];
+  for (let dayOffset = 0; dayOffset < 21; dayOffset += 1) {
+    const date = new Date(now);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(now.getDate() + dayOffset);
+
+    if (!branchOpenDays.includes(date.getDay())) continue;
+
+    for (const time of compatibleTimes) {
+      const startAt = withTime(date, time);
+      if (startAt.getTime() < now.getTime() + minLeadTime) continue;
+
+      const dateISO = toDateISO(startAt);
+      const id = `${branchId}-${dateISO}-${time}`;
+      if (bookedIds.has(id)) continue;
+
+      generated.push({
+        id,
+        dateISO,
+        dateLabel: DATE_LABEL_FORMATTER.format(startAt),
+        timeLabel: TIME_LABEL_FORMATTER.format(startAt),
+        startAt,
+      });
+    }
+  }
+
+  return generated;
+}
 
 type StepId = "topic" | "branch" | "time" | "details" | "confirm";
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -92,6 +176,7 @@ function AppointmentCreate() {
   const [topicId, setTopicId] = useState("");
   const [branchId, setBranchId] = useState("");
   const [slotId, setSlotId] = useState("");
+  const [selectedDateISO, setSelectedDateISO] = useState("");
 
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -155,13 +240,37 @@ function AppointmentCreate() {
   // compute what slots are actually available by checking branch and booked appointments
   const availableSlots = useMemo(() => {
     const bookedIds = new Set(appointments.map((a) => a.slotId));
-    let slots = allSlots;
-    if (selectedBranch) {
-      slots = slots.filter((s) => selectedBranch.slotIds.includes(s.id));
+    return buildAvailableSlots(topicId, branchId, bookedIds);
+  }, [appointments, topicId, branchId]);
+  const selectedSlot = useMemo(() => availableSlots.find((s) => s.id === slotId) ?? null, [availableSlots, slotId]);
+  const availableDates = useMemo(
+    () => [...new Set(availableSlots.map((s) => s.dateISO))],
+    [availableSlots]
+  );
+  const slotsForSelectedDate = useMemo(
+    () => availableSlots.filter((s) => s.dateISO === selectedDateISO),
+    [availableSlots, selectedDateISO]
+  );
+  const selectedDateMonthLabel = useMemo(() => {
+    if (!selectedDateISO) return MONTH_YEAR_FORMATTER.format(new Date());
+    return MONTH_YEAR_FORMATTER.format(fromDateISO(selectedDateISO));
+  }, [selectedDateISO]);
+
+  useEffect(() => {
+    if (availableDates.length === 0) {
+      setSelectedDateISO("");
+      setSlotId("");
+      return;
     }
-    return slots.filter((s) => !bookedIds.has(s.id));
-  }, [appointments, selectedBranch]);
-  const selectedSlot = useMemo(() => allSlots.find((s) => s.id === slotId) ?? null, [slotId]);
+
+    if (!availableDates.includes(selectedDateISO)) {
+      setSelectedDateISO(availableDates[0]);
+    }
+
+    if (slotId && !availableSlots.some((s) => s.id === slotId)) {
+      setSlotId("");
+    }
+  }, [availableDates, selectedDateISO, slotId, availableSlots]);
 
   function goNext() {
     if (step === "topic") setStep("branch");
@@ -247,7 +356,7 @@ function AppointmentCreate() {
 
   // Tile styling helper
   const getTileStyle = (isSelected: boolean) =>
-    `flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all ${
+    `flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all cursor-pointer select-none caret-transparent ${
       isSelected
         ? "border-blue-600 bg-blue-50 ring-2 ring-blue-600 ring-offset-2 shadow-md dark:border-blue-400 dark:bg-slate-800/90 dark:ring-blue-400/70 dark:ring-offset-0 dark:shadow-sm dark:shadow-black/30"
         : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-lg hover:-translate-y-1 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-400/70 dark:hover:shadow-sm dark:hover:shadow-black/25"
@@ -508,8 +617,48 @@ function AppointmentCreate() {
                 </div>
               </div>
 
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    Calendar Window: {selectedDateMonthLabel}
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-300">
+                    Starts from today and updates automatically.
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {availableDates.map((dateISO) => {
+                    const label = DATE_LABEL_FORMATTER.format(fromDateISO(dateISO));
+                    const isSelected = selectedDateISO === dateISO;
+                    return (
+                      <button
+                        key={dateISO}
+                        type="button"
+                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                          isSelected
+                            ? "border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-200"
+                            : "border-slate-300 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-blue-500"
+                        }`}
+                        onClick={() => {
+                          setSelectedDateISO(dateISO);
+                          setSlotId("");
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {availableSlots.length === 0 ? (
+                <div className={emptyState}>
+                  No appointment times are currently available for this topic and branch combination.
+                </div>
+              ) : null}
+
               <div className={grid3}>
-                {availableSlots.map((s) => (
+                {slotsForSelectedDate.map((s) => (
                   <button
                     key={s.id}
                     type="button"
