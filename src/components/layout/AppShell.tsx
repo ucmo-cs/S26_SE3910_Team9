@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import TopNav from "./TopNav";
+import ReminderScheduler from "../ReminderScheduler";
 import { appBg } from "../../styles/layout";
 
 const THEME_KEY = "bank-app-theme";
@@ -21,6 +22,7 @@ function AppShell() {
   return (
     <div className={appBg}>
       <TopNav isDark={isDark} onThemeToggle={() => setIsDark((current) => !current)} />
+      <ReminderScheduler />
       <Outlet />
     </div>
   );

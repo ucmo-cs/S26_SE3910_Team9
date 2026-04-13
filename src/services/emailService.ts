@@ -49,6 +49,39 @@ export async function sendAppointmentConfirmation(data: AppointmentEmailData): P
   }
 }
 
+export async function sendAppointmentReminder(data: AppointmentEmailData): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/appointments/send-reminder`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      console.error('Reminder email API error:', result);
+      return {
+        success: false,
+        error: result.error || 'Failed to send reminder email',
+      };
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error calling reminder API:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Network error',
+    };
+  }
+}
+
 /**
  * Check if the email backend is available
  */

@@ -9,6 +9,7 @@ export type Appointment = {
   branchId: string;
   branchName: string;
   slotId: string;
+  startAtISO: string;
   dateLabel: string;
   timeLabel: string;
   customerName: string;
@@ -21,6 +22,7 @@ interface AppointmentContextType {
   appointments: Appointment[];
   addAppointment: (a: Omit<Appointment, "id" | "status" | "confirmationNumber">) => Appointment;
   removeAppointment: (id: string) => void;
+  clearAppointments: () => void;
   getAppointment: (id: string) => Appointment | undefined;
 }
 
@@ -99,6 +101,10 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
     setAppointments((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
+  const clearAppointments = useCallback(() => {
+    setAppointments([]);
+  }, []);
+
   const getAppointment = useCallback(
     (id: string) => appointments.find((a) => a.id === id),
     [appointments]
@@ -106,7 +112,7 @@ export function AppointmentProvider({ children }: { children: React.ReactNode })
 
   return (
     <AppointmentContext.Provider
-      value={{ appointments, addAppointment, removeAppointment, getAppointment }}
+      value={{ appointments, addAppointment, removeAppointment, clearAppointments, getAppointment }}
     >
       {children}
     </AppointmentContext.Provider>

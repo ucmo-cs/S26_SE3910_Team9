@@ -1,10 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import { page, stack, grid2 } from "../styles/layout";
 import { button, buttonPrimary, emptyState, pill } from "../styles/ui";
 
 import { useAppointments } from "../state/appointments";
+import { useUser } from "../state/user";
 
 // we no longer need mock data; type reexported for clarity
 export type Appointment = {
@@ -20,6 +21,15 @@ export type Appointment = {
 
 function AppointmentList() {
   const { appointments, removeAppointment } = useAppointments();
+  const { account, isAuthenticated } = useUser();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/account/create" replace />;
+  }
+
+  const visibleAppointments = appointments.filter(
+    (appointment) => appointment.customerEmail.toLowerCase() === account.email.toLowerCase()
+  );
 
   const getReferenceNumber = (appointmentId: string, confirmationNumber?: string) => {
     if (confirmationNumber) return confirmationNumber;
@@ -41,20 +51,20 @@ function AppointmentList() {
           }
         />
 
-        {appointments.length === 0 ? (
+        {visibleAppointments.length === 0 ? (
           <div className={emptyState}>
             <div className="mb-2 text-4xl">📅</div>
             <h3 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">No appointments yet</h3>
             <p className="mb-4 max-w-xs text-sm text-slate-500 dark:text-slate-300">
               You haven't booked any visits. Schedule a time with a specialist today.
             </p>
-            <Link to="/appointments/create" className={`${button} ${buttonPrimary}`}>
-              Book Now
+            <Link to={isAuthenticated ? "/appointments/create" : "/account/create"} className={`${button} ${buttonPrimary}`}>
+              {isAuthenticated ? "Book Now" : "Create Account"}
             </Link>
           </div>
         ) : (
           <div className={grid2}>
-            {appointments.map((a) => (
+            {visibleAppointments.map((a) => (
               <Card key={a.id}>
                 <div className="flex items-start justify-between">
                   <div className="flex flex-col gap-1">

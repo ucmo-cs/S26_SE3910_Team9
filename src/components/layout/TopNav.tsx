@@ -1,4 +1,6 @@
-import { Link, NavLink, useMatch } from "react-router-dom";
+import { Link, NavLink, useMatch, useNavigate } from "react-router-dom";
+import logo from "../../assets/image.png";
+import { useUser } from "../../state/user";
 import { navWrap, navInner, brand, navLinks, linkBase, linkIdle, linkActive } from "../../styles/nav";
 
 type TopNavProps = {
@@ -7,19 +9,27 @@ type TopNavProps = {
 };
 
 function TopNav({ isDark, onThemeToggle }: TopNavProps) {
+  const navigate = useNavigate();
+  const { account, isAuthenticated, signOut } = useUser();
   const onAppointmentsList = Boolean(useMatch({ path: "/appointments", end: true }));
   const onCreateAppointment = Boolean(useMatch("/appointments/create"));
   const onAppointmentDetail = Boolean(useMatch({ path: "/appointments/:appointmentId", end: true })) && !onCreateAppointment;
+  const onAccountPage = Boolean(useMatch("/account/create"));
+
+  const handleSignOut = () => {
+    signOut();
+    navigate("/");
+  };
 
   return (
     <div className={navWrap}>
       <div className={navInner}>
         {/* Logo/brand always routes back home */}
         <Link to="/" className={brand} aria-label="Go to home page">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-            B
-          </div>
-          <span>Bank App (Prototype)</span>
+          <span className="flex h-10 w-10 overflow-hidden rounded-full bg-slate-950/0 dark:bg-slate-950">
+            <img src={logo} alt="Commerce Bank logo" className="h-full w-full object-contain" />
+          </span>
+          <span>Commerce Bank</span>
         </Link>
 
         <div className="flex items-center gap-3">
@@ -60,6 +70,23 @@ function TopNav({ isDark, onThemeToggle }: TopNavProps) {
           >
             Book Now
           </NavLink>
+
+          <NavLink
+            to="/account/create"
+            className={onAccountPage ? `${linkBase} ${linkActive}` : `${linkBase} ${linkIdle}`}
+          >
+            {isAuthenticated ? "Account" : "Sign In"}
+          </NavLink>
+
+          {isAuthenticated ? (
+            <button
+              type="button"
+              className={`${linkBase} ${linkIdle} border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800`}
+              onClick={handleSignOut}
+            >
+              Sign Out
+            </button>
+          ) : null}
           </div>
         </div>
       </div>

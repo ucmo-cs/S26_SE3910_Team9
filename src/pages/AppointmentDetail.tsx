@@ -1,14 +1,15 @@
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import { page, stack, section } from "../styles/layout";
 import { button, muted, divider } from "../styles/ui";
 
 import { useAppointments } from "../state/appointments";
+import { useUser } from "../state/user";
 
 function AppointmentDetail() {
   const params = useParams();
-  const navigate = useNavigate();
+  const { account, isAuthenticated } = useUser();
   const appointmentId = params.appointmentId ?? "";
   const { getAppointment } = useAppointments();
   const appt = getAppointment(appointmentId || "");
@@ -17,10 +18,8 @@ function AppointmentDetail() {
     ? appt.confirmationNumber ?? appt.id.replace(/\D/g, "").slice(-4).padStart(4, "0")
     : "";
 
-  if (!appt) {
-    // if not found, navigate back to list
-    navigate("/appointments");
-    return null;
+  if (!appt || (isAuthenticated && appt.customerEmail.toLowerCase() !== account.email.toLowerCase())) {
+    return <Navigate to="/appointments" replace />;
   }
 
   return (

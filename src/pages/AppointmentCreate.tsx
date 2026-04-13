@@ -9,6 +9,7 @@ import { button, buttonPrimary, buttonGhost, divider, h2, input, label, muted, e
 
 // use shared appointment state
 import { useAppointments } from "../state/appointments";
+import { useUser } from "../state/user";
 
 // Email service
 import { sendAppointmentConfirmation } from "../services/emailService";
@@ -188,6 +189,19 @@ function AppointmentCreate() {
   const [infoTopicId, setInfoTopicId] = useState("");
 
   const { appointments, addAppointment } = useAppointments();
+  const { account, isAuthenticated } = useUser();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/account/create");
+    }
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    if (!account) return;
+    setCustomerName(account.fullName);
+    setCustomerEmail(account.email);
+  }, [account]);
 
   const currentIndex = useMemo(() => {
     if (step === "topic") return 0;
@@ -311,6 +325,7 @@ function AppointmentCreate() {
       branchId: selectedBranch.id,
       branchName: selectedBranch.name,
       slotId: selectedSlot.id,
+      startAtISO: selectedSlot.startAt.toISOString(),
       dateLabel: selectedSlot.dateLabel,
       timeLabel: selectedSlot.timeLabel,
       customerName: customerName.trim(),

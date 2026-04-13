@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
 import Card from "../components/ui/Card";
+import { useUser } from "../state/user";
 import { page, stack, grid3 } from "../styles/layout";
-import { button, muted } from "../styles/ui";
+import { button, buttonPrimary, muted } from "../styles/ui";
 
 function Home() {
+  const { isAuthenticated } = useUser();
+
   return (
     <div className={page}>
       <div className={stack}>
@@ -16,8 +19,11 @@ function Home() {
             Skip the line and book a meeting with a specialist at a time that works for you.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/appointments/create" className={`${button} bg-white text-slate-900 hover:bg-blue-50 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white`}>
-              Book an Appointment
+            <Link
+              to={isAuthenticated ? "/appointments/create" : "/account/create"}
+              className={`${button} ${buttonPrimary}`}
+            >
+              {isAuthenticated ? "Book an Appointment" : "Create an Account"}
             </Link>
             <Link to="/appointments" className={`${button} border border-slate-700 bg-slate-800 text-white hover:bg-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700`}>
               My Scheduled Visits
