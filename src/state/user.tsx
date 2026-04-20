@@ -14,6 +14,7 @@ export type UserAccount = {
 interface UserContextType {
   account: UserAccount | null;
   hasRegisteredAccount: boolean;
+  registeredEmail: string | null;
   isAuthenticated: boolean;
   createAccount: (payload: { fullName: string; email: string; password: string }) => Promise<boolean>;
   signIn: (payload: { email: string; password: string }) => Promise<boolean>;
@@ -64,10 +65,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const createAccount = async ({ fullName, email, password }: { fullName: string; email: string; password: string }) => {
     if (password.length < 8) return false;
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (storedAccount && storedAccount.email === normalizedEmail) {
+      return false;
+    }
+
     const passwordHash = await hashPassword(password);
     const normalizedAccount = {
       fullName: fullName.trim(),
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       passwordHash,
     };
     setStoredAccount(normalizedAccount);
@@ -96,6 +103,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const account = sessionAccount;
   const hasRegisteredAccount = Boolean(storedAccount);
+  const registeredEmail = storedAccount?.email ?? null;
   const isAuthenticated = Boolean(sessionAccount);
 
   return (
@@ -103,6 +111,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       value={{
         account,
         hasRegisteredAccount,
+        registeredEmail,
         isAuthenticated,
         createAccount,
         signIn,

@@ -12,6 +12,7 @@ function AccountCreate() {
   const {
     account,
     hasRegisteredAccount,
+    registeredEmail,
     isAuthenticated,
     createAccount,
     signIn,
@@ -64,13 +65,18 @@ function AccountCreate() {
         setIsSubmitting(false);
         return;
       }
+      const normalizedEmail = email.trim().toLowerCase();
       const success = await createAccount({
         fullName: fullName.trim(),
         email: email.trim(),
         password,
       });
       if (!success) {
-        setError("Unable to create account. Please try again.");
+        if (hasRegisteredAccount && registeredEmail === normalizedEmail) {
+          setError("An account with this email already exists. Please sign in instead.");
+        } else {
+          setError("Unable to create account. Please try again.");
+        }
         setIsSubmitting(false);
         return;
       }
@@ -140,7 +146,7 @@ function AccountCreate() {
                 </div>
                 {hasRegisteredAccount && mode === "register" ? (
                   <div className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-                    An existing account is saved. Registering again will replace the current stored account.
+                    An account already exists for {registeredEmail}. Please switch to Sign In to access it or reset the test data.
                   </div>
                 ) : null}
 
