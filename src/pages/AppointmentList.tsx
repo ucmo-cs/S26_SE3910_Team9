@@ -28,7 +28,7 @@ function AppointmentList() {
   }
 
   const visibleAppointments = appointments.filter(
-    (appointment) => appointment.customerEmail.toLowerCase() === account.email.toLowerCase()
+    (appointment) => account && appointment.customerEmail.toLowerCase() === account.email.toLowerCase()
   );
 
   const getReferenceNumber = (appointmentId: string, confirmationNumber?: string) => {
@@ -87,9 +87,14 @@ function AppointmentList() {
                     className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-base text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-950/35 dark:text-red-300 dark:hover:bg-red-900/45"
                     title="Cancel appointment"
                     aria-label={`Cancel appointment ${a.topicName}`}
-                    onClick={() => {
+                    onClick={async () => {
                       if (window.confirm("Cancel this appointment?")) {
-                        removeAppointment(a.id);
+                        try {
+                          await removeAppointment(a.id);
+                        } catch (error) {
+                          console.error("Failed to cancel appointment:", error);
+                          // TODO: Show error to user
+                        }
                       }
                     }}
                   >

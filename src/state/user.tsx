@@ -1,10 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
-
-export type StoredUserAccount = {
-  fullName: string;
-  email: string;
-  passwordHash: string;
-};
+import { register, login } from "../services/authService";
+import type { LoginRequest, RegisterRequest } from "../services/authService";
 
 export type UserAccount = {
   fullName: string;
@@ -13,110 +9,112 @@ export type UserAccount = {
 
 interface UserContextType {
   account: UserAccount | null;
-  hasRegisteredAccount: boolean;
-  registeredEmail: string | null;
+  token: string | null;
   isAuthenticated: boolean;
-  createAccount: (payload: { fullName: string; email: string; password: string }) => Promise<boolean>;
-  signIn: (payload: { email: string; password: string }) => Promise<boolean>;
+  createAccount: (payload: RegisterRequest) => Promise<boolean>;
+  signIn: (payload: LoginRequest) => Promise<boolean>;
   signOut: () => void;
-  clearAccount: () => void;
 }
 
-const USER_STORAGE_KEY = "commerce-bank-user";
+const TOKEN_STORAGE_KEY = "auth-token";
 const UserContext = createContext<UserContextType | null>(null);
 
-async function hashPassword(password: string) {
-  const data = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+function loadStoredToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
 }
 
-function loadStoredUser(): StoredUserAccount | null {
+function decodeAccountFromToken(token: string): UserAccount | null {
   try {
-    const stored = localStorage.getItem(USER_STORAGE_KEY);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored);
-    if (parsed && typeof parsed === "object" && typeof parsed.fullName === "string" && typeof parsed.email === "string") {
-      return {
-        fullName: parsed.fullName,
-        email: parsed.email,
-        passwordHash: typeof parsed.passwordHash === "string" ? parsed.passwordHash : "",
-      };
+    const payloadPart = token.split(".")[1] || "";
+    const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "===".slice((base64.length + 3) % 4);
+    const payload = JSON.parse(atob(padded));
+    return {
+      fullName: payload.fullName || payload.name || payload.sub || "",
+      email: payload.email || payload.sub || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function storeToken(token: string | null) {
+  try {
+    if (token) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    } else {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
     }
   } catch {
-    // ignore parse errors
+    // ignore storage errors
   }
-  return null;
 }
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [storedAccount, setStoredAccount] = useState<StoredUserAccount | null>(() => loadStoredUser());
-  const [sessionAccount, setSessionAccount] = useState<UserAccount | null>(null);
+  const [token, setToken] = useState<string | null>(() => loadStoredToken());
+  const [account, setAccount] = useState<UserAccount | null>(() => {
+    const stored = loadStoredToken();
+    return stored ? decodeAccountFromToken(stored) : null;
+  });
 
+  // Decode token to get account info
   useEffect(() => {
-    if (storedAccount) {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(storedAccount));
+    if (token) {
+      const decoded = decodeAccountFromToken(token);
+      setAccount(decoded);
+      if (!decoded) {
+        setToken(null);
+      }
     } else {
-      localStorage.removeItem(USER_STORAGE_KEY);
+      setAccount(null);
     }
-  }, [storedAccount]);
+  }, [token]);
 
-  const createAccount = async ({ fullName, email, password }: { fullName: string; email: string; password: string }) => {
-    if (password.length < 8) return false;
-    const normalizedEmail = email.trim().toLowerCase();
+  // Persist token
+  useEffect(() => {
+    storeToken(token);
+  }, [token]);
 
-    if (storedAccount && storedAccount.email === normalizedEmail) {
+  const createAccount = async ({ fullName, email, password }: RegisterRequest) => {
+    try {
+      await register({ fullName, email, password });
+      return true;
+    } catch (error) {
+      console.error('Registration failed:', error);
       return false;
     }
-
-    const passwordHash = await hashPassword(password);
-    const normalizedAccount = {
-      fullName: fullName.trim(),
-      email: normalizedEmail,
-      passwordHash,
-    };
-    setStoredAccount(normalizedAccount);
-    setSessionAccount({ fullName: normalizedAccount.fullName, email: normalizedAccount.email });
-    return true;
   };
 
-  const signIn = async ({ email, password }: { email: string; password: string }) => {
-    if (!storedAccount) return false;
-
-    const normalizedEmail = email.trim().toLowerCase();
-    if (storedAccount.email !== normalizedEmail) return false;
-
-    const passwordHash = await hashPassword(password);
-    if (passwordHash !== storedAccount.passwordHash) return false;
-
-    setSessionAccount({ fullName: storedAccount.fullName, email: storedAccount.email });
-    return true;
+  const signIn = async ({ email, password }: LoginRequest) => {
+    try {
+      const response = await login({ email, password });
+      setToken(response.token);
+      setAccount(response.account);
+      return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
+    }
   };
 
-  const signOut = () => setSessionAccount(null);
-  const clearAccount = () => {
-    setSessionAccount(null);
-    setStoredAccount(null);
+  const signOut = () => {
+    setToken(null);
+    setAccount(null);
   };
-
-  const account = sessionAccount;
-  const hasRegisteredAccount = Boolean(storedAccount);
-  const registeredEmail = storedAccount?.email ?? null;
-  const isAuthenticated = Boolean(sessionAccount);
 
   return (
     <UserContext.Provider
       value={{
         account,
-        hasRegisteredAccount,
-        registeredEmail,
-        isAuthenticated,
+        token,
+        isAuthenticated: !!token,
         createAccount,
         signIn,
         signOut,
-        clearAccount,
       }}
     >
       {children}
@@ -124,10 +122,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useUser() {
   const ctx = useContext(UserContext);
   if (!ctx) {
-    throw new Error("useUser must be used within a UserProvider");
+    throw new Error("useUser must be used within UserProvider");
   }
   return ctx;
 }

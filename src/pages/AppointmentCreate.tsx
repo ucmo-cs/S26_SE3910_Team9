@@ -12,7 +12,7 @@ import { useAppointments } from "../state/appointments";
 import { useUser } from "../state/user";
 
 // Email service
-import { sendAppointmentConfirmation } from "../services/emailService";
+// import { sendAppointmentConfirmation } from "../services/emailService";
 
 type Topic = { id: string; name: string; icon: string };
 type Branch = { id: string; name: string; topicIds: string[] };
@@ -318,55 +318,42 @@ function AppointmentCreate() {
 
     setIsSubmitting(true);
 
-    const newAppt = addAppointment({
-      topicId: selectedTopic.id,
-      topicName: selectedTopic.name,
-      topicIcon: selectedTopic.icon,
-      branchId: selectedBranch.id,
-      branchName: selectedBranch.name,
-      slotId: selectedSlot.id,
-      startAtISO: selectedSlot.startAt.toISOString(),
-      dateLabel: selectedSlot.dateLabel,
-      timeLabel: selectedSlot.timeLabel,
-      customerName: customerName.trim(),
-      customerEmail: customerEmail.trim(),
-      notes: appointmentNotes.trim(),
-    });
-
-    // Send confirmation email
     try {
-      const result = await sendAppointmentConfirmation({
-        customerEmail: customerEmail.trim(),
-        customerName: customerName.trim(),
+      const newAppt = await addAppointment({
+        topicId: selectedTopic.id,
         topicName: selectedTopic.name,
+        topicIcon: selectedTopic.icon,
+        branchId: selectedBranch.id,
         branchName: selectedBranch.name,
+        slotId: selectedSlot.id,
+        startAtISO: selectedSlot.startAt.toISOString(),
         dateLabel: selectedSlot.dateLabel,
         timeLabel: selectedSlot.timeLabel,
-        confirmationNumber: newAppt.confirmationNumber || newAppt.id,
+        customerName: customerName.trim(),
+        customerEmail: account!.email,
+        notes: appointmentNotes.trim(),
       });
 
-      if (result.success) {
-        console.log("Confirmation email sent successfully");
-      } else {
-        console.error("Failed to send email:", result.error);
-      }
-    } catch (err) {
-      console.error("Error sending email:", err);
+      // Email is sent automatically by the backend
+
+      // reset form just in case user returns
+      setTopicId("");
+      setBranchId("");
+      setSlotId("");
+      setCustomerName("");
+      setCustomerEmail("");
+      setAppointmentNotes("");
+      setNameTouched(false);
+      setEmailTouched(false);
+      setInfoTopicId("");
+      setIsSubmitting(false);
+
+      navigate(`/appointments/${newAppt.id}`);
+    } catch (error) {
+      console.error("Failed to create appointment:", error);
+      setIsSubmitting(false);
+      // TODO: Show error to user
     }
-
-    // reset form just in case user returns
-    setTopicId("");
-    setBranchId("");
-    setSlotId("");
-    setCustomerName("");
-    setCustomerEmail("");
-    setAppointmentNotes("");
-    setNameTouched(false);
-    setEmailTouched(false);
-    setInfoTopicId("");
-    setIsSubmitting(false);
-
-    navigate(`/appointments/${newAppt.id}`);
   }
 
   // Tile styling helper

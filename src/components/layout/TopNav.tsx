@@ -10,7 +10,7 @@ type TopNavProps = {
 
 function TopNav({ isDark, onThemeToggle }: TopNavProps) {
   const navigate = useNavigate();
-  const { account, isAuthenticated, signOut } = useUser();
+  const { isAuthenticated, signOut } = useUser();
   const onAppointmentsList = Boolean(useMatch({ path: "/appointments", end: true }));
   const onCreateAppointment = Boolean(useMatch("/appointments/create"));
   const onAppointmentDetail = Boolean(useMatch({ path: "/appointments/:appointmentId", end: true })) && !onCreateAppointment;

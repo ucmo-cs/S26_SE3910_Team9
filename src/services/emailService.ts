@@ -14,18 +14,23 @@ export interface AppointmentEmailData {
   confirmationNumber: string;
 }
 
-export async function sendAppointmentConfirmation(data: AppointmentEmailData): Promise<{
+export async function sendAppointmentConfirmation(data: AppointmentEmailData, token?: string): Promise<{
   success: boolean;
   message?: string;
   previewUrl?: string;
   error?: string;
 }> {
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}/appointments/send-confirmation`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(data),
     });
 
@@ -49,17 +54,22 @@ export async function sendAppointmentConfirmation(data: AppointmentEmailData): P
   }
 }
 
-export async function sendAppointmentReminder(data: AppointmentEmailData): Promise<{
+export async function sendAppointmentReminder(data: AppointmentEmailData, token?: string): Promise<{
   success: boolean;
   message?: string;
   error?: string;
 }> {
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}/appointments/send-reminder`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(data),
     });
 

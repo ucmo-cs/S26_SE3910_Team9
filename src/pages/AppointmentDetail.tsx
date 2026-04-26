@@ -1,4 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import { page, stack, section } from "../styles/layout";
@@ -6,19 +7,50 @@ import { button, muted, divider } from "../styles/ui";
 
 import { useAppointments } from "../state/appointments";
 import { useUser } from "../state/user";
+import type { Appointment } from "../state/appointments";
 
 function AppointmentDetail() {
   const params = useParams();
   const { account, isAuthenticated } = useUser();
   const appointmentId = params.appointmentId ?? "";
   const { getAppointment } = useAppointments();
-  const appt = getAppointment(appointmentId || "");
+  const [appt, setAppt] = useState<Appointment | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAppointment = async () => {
+      if (!appointmentId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const appointment = await getAppointment(appointmentId);
+        setAppt(appointment);
+      } catch (error) {
+        console.error("Failed to load appointment:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAppointment();
+  }, [appointmentId, getAppointment]);
 
   const lookupNumber = appt
     ? appt.confirmationNumber ?? appt.id.replace(/\D/g, "").slice(-4).padStart(4, "0")
     : "";
 
-  if (!appt || (isAuthenticated && appt.customerEmail.toLowerCase() !== account.email.toLowerCase())) {
+  if (loading) {
+    return (
+      <div className={page}>
+        <div className={stack}>
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!appt || (isAuthenticated && account && appt.customerEmail.toLowerCase() !== account.email.toLowerCase())) {
     return <Navigate to="/appointments" replace />;
   }
 

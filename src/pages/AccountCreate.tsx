@@ -11,19 +11,14 @@ function AccountCreate() {
   const navigate = useNavigate();
   const {
     account,
-    hasRegisteredAccount,
-    registeredEmail,
     isAuthenticated,
     createAccount,
     signIn,
     signOut,
-    clearAccount,
   } = useUser();
-  const { clearAppointments } = useAppointments();
+  const { } = useAppointments();
 
-  const [mode, setMode] = useState<"register" | "signin">(
-    hasRegisteredAccount ? "signin" : "register"
-  );
+  const [mode, setMode] = useState<"register" | "signin">("register");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,38 +54,38 @@ function AccountCreate() {
     setError("");
     setIsSubmitting(true);
 
-    if (mode === "register") {
-      if (!doPasswordsMatch) {
-        setError("Passwords do not match.");
-        setIsSubmitting(false);
-        return;
-      }
-      const normalizedEmail = email.trim().toLowerCase();
-      const success = await createAccount({
-        fullName: fullName.trim(),
-        email: email.trim(),
-        password,
-      });
-      if (!success) {
-        if (hasRegisteredAccount && registeredEmail === normalizedEmail) {
-          setError("An account with this email already exists. Please sign in instead.");
-        } else {
-          setError("Unable to create account. Please try again.");
+    try {
+      if (mode === "register") {
+        if (!doPasswordsMatch) {
+          setError("Passwords do not match.");
+          setIsSubmitting(false);
+          return;
         }
-        setIsSubmitting(false);
-        return;
+        const success = await createAccount({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          password,
+        });
+        if (!success) {
+          setError("Unable to create account. It may already exist.");
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        const success = await signIn({ email, password });
+        if (!success) {
+          setError("Email or password is incorrect.");
+          setIsSubmitting(false);
+          return;
+        }
       }
-    } else {
-      const success = await signIn({ email, password });
-      if (!success) {
-        setError("Email or password is incorrect.");
-        setIsSubmitting(false);
-        return;
-      }
-    }
 
-    setIsSubmitting(false);
-    navigate("/appointments");
+      setIsSubmitting(false);
+      navigate("/appointments");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+      setIsSubmitting(false);
+    }
   }
 
   const authTitle = isAuthenticated
@@ -144,11 +139,6 @@ function AccountCreate() {
                     Sign In
                   </button>
                 </div>
-                {hasRegisteredAccount && mode === "register" ? (
-                  <div className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-                    An account already exists for {registeredEmail}. Please switch to Sign In to access it or reset the test data.
-                  </div>
-                ) : null}
 
                 <div className="mt-6 grid gap-6">
                   {mode === "register" ? (
@@ -250,12 +240,10 @@ function AccountCreate() {
                     type="button"
                     className={`${button} ${buttonGhost} w-full text-center`}
                     onClick={() => {
-                      clearAccount();
-                      clearAppointments();
                       navigate("/");
                     }}
                   >
-                    Reset all test data
+                    Back to Home
                   </button>
                 </div>
               </>

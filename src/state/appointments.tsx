@@ -1,4 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { useUser } from "./user";
+import { getAppointments, createAppointment, deleteAppointment, getAppointment } from "../services/appointmentService";
+import type { AppointmentCreateRequest, AppointmentResponse } from "../services/appointmentService";
 
 export type Appointment = {
   id: string;
@@ -20,103 +23,116 @@ export type Appointment = {
 
 interface AppointmentContextType {
   appointments: Appointment[];
-  addAppointment: (a: Omit<Appointment, "id" | "status" | "confirmationNumber">) => Appointment;
-  removeAppointment: (id: string) => void;
-  clearAppointments: () => void;
-  getAppointment: (id: string) => Appointment | undefined;
+  loading: boolean;
+  error: string | null;
+  addAppointment: (a: Omit<Appointment, "id" | "status" | "confirmationNumber">) => Promise<Appointment>;
+  removeAppointment: (id: string) => Promise<void>;
+  refreshAppointments: () => Promise<void>;
+  getAppointment: (id: string) => Promise<Appointment | null>;
 }
 
-const STORAGE_KEY = "appointments";
 const AppointmentContext = createContext<AppointmentContextType | null>(null);
 
-function toDisplayConfirmationNumber(value: number) {
-  return value.toString().padStart(4, "0");
-}
-
-function nextConfirmationNumber(current: Appointment[]) {
-  const maxValue = current.reduce((max, item) => {
-    const source = item.confirmationNumber ?? item.id;
-    const digits = source.replace(/\D/g, "");
-    if (!digits) return max;
-    const parsed = Number.parseInt(digits, 10);
-    if (Number.isNaN(parsed)) return max;
-    return Math.max(max, parsed);
-  }, 999);
-
-  return toDisplayConfirmationNumber(maxValue + 1);
-}
-
-function normalizeStoredAppointments(stored: unknown): Appointment[] {
-  if (!Array.isArray(stored)) return [];
-  return stored
-    .filter((item): item is Appointment => Boolean(item && typeof item === "object"))
-    .map((item) => {
-      const fallbackDigits = String(item.id ?? "").replace(/\D/g, "");
-      const fallback = fallbackDigits
-        ? toDisplayConfirmationNumber(Number.parseInt(fallbackDigits.slice(-4), 10) || 1000)
-        : "1000";
-
-      return {
-        ...item,
-        confirmationNumber: item.confirmationNumber ?? fallback,
-      };
-    });
-}
-
 export function AppointmentProvider({ children }: { children: React.ReactNode }) {
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return normalizeStoredAppointments(JSON.parse(stored));
-      }
-    } catch (err) {
-      console.warn("Failed to load appointments from storage", err);
-    }
-    return [];
-  });
+  const { token, isAuthenticated } = useUser();
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // persist on change
+  const refreshAppointments = useCallback(async () => {
+    if (!token || !isAuthenticated) {
+      setAppointments([]);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getAppointments(token);
+      setAppointments(data.map(convertApiResponseToAppointment));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load appointments');
+      console.error('Failed to load appointments:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, isAuthenticated]);
+
+  // Load appointments when user logs in
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(appointments));
-    } catch (err) {
-      console.warn("Failed to save appointments to storage", err);
+    refreshAppointments();
+  }, [refreshAppointments]);
+
+  const addAppointment = useCallback(async (request: AppointmentCreateRequest): Promise<Appointment> => {
+    if (!token) {
+      throw new Error('Not authenticated');
     }
-  }, [appointments]);
 
-  const addAppointment = useCallback((a: Omit<Appointment, "id" | "status" | "confirmationNumber">) => {
-    const confirmationNumber = nextConfirmationNumber(appointments);
-    const newAppt: Appointment = {
-      ...a,
-      id: confirmationNumber,
-      confirmationNumber,
-      status: "Confirmed",
-    };
-    setAppointments((prev) => [...prev, newAppt]);
-    return newAppt;
-  }, [appointments]);
+    const response = await createAppointment(request, token);
+    const newAppointment = convertApiResponseToAppointment(response);
 
-  const removeAppointment = useCallback((id: string) => {
-    setAppointments((prev) => prev.filter((a) => a.id !== id));
-  }, []);
+    setAppointments(prev => [newAppointment, ...prev]);
+    return newAppointment;
+  }, [token]);
 
-  const clearAppointments = useCallback(() => {
-    setAppointments([]);
-  }, []);
+  const removeAppointment = useCallback(async (id: string): Promise<void> => {
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
 
-  const getAppointment = useCallback(
-    (id: string) => appointments.find((a) => a.id === id),
-    [appointments]
-  );
+    await deleteAppointment(id, token);
+    setAppointments(prev => prev.filter(a => a.id !== id));
+  }, [token]);
+
+  const getAppointmentById = useCallback(async (id: string): Promise<Appointment | null> => {
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const response = await getAppointment(id, token);
+      return convertApiResponseToAppointment(response);
+    } catch (err) {
+      console.error('Failed to get appointment:', err);
+      return null;
+    }
+  }, [token]);
 
   return (
     <AppointmentContext.Provider
-      value={{ appointments, addAppointment, removeAppointment, clearAppointments, getAppointment }}
+      value={{
+        appointments,
+        loading,
+        error,
+        addAppointment,
+        removeAppointment,
+        refreshAppointments,
+        getAppointment: getAppointmentById,
+      }}
     >
       {children}
     </AppointmentContext.Provider>
   );
+}
+
+function convertApiResponseToAppointment(api: AppointmentResponse): Appointment {
+  return {
+    id: api.id,
+    confirmationNumber: api.confirmationNumber,
+    topicId: api.topicId,
+    topicName: api.topicName,
+    topicIcon: api.topicIcon,
+    branchId: api.branchId,
+    branchName: api.branchName,
+    slotId: api.slotId,
+    startAtISO: api.startAtISO,
+    dateLabel: api.dateLabel,
+    timeLabel: api.timeLabel,
+    customerName: api.customerName,
+    customerEmail: api.customerEmail,
+    notes: api.notes,
+    status: api.status as "Confirmed" | "Pending",
+  };
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

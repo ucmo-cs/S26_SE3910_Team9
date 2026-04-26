@@ -8,11 +8,11 @@ const REMINDER_WINDOW_MS = 1000 * 60 * 60 * 6; // send reminders for appointment
 
 function ReminderScheduler() {
   const { appointments } = useAppointments();
-  const { account, isAuthenticated } = useUser();
+  const { account, isAuthenticated, token } = useUser();
   const sentReminderIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!isAuthenticated || !account) return;
+    if (!isAuthenticated || !account || !token) return;
 
     const checkForReminders = async () => {
       const now = Date.now();
@@ -30,7 +30,7 @@ function ReminderScheduler() {
 
       for (const appointment of targets) {
         try {
-          await sendAppointmentReminder({
+          const result = await sendAppointmentReminder({
             customerEmail: appointment.customerEmail,
             customerName: appointment.customerName,
             topicName: appointment.topicName,
@@ -38,8 +38,11 @@ function ReminderScheduler() {
             dateLabel: appointment.dateLabel,
             timeLabel: appointment.timeLabel,
             confirmationNumber: appointment.confirmationNumber || appointment.id,
-          });
-          sentReminderIds.current.add(appointment.id);
+          }, token);
+
+          if (result.success) {
+            sentReminderIds.current.add(appointment.id);
+          }
         } catch (error) {
           console.error("Reminder sending failed", error);
         }
@@ -49,7 +52,7 @@ function ReminderScheduler() {
     checkForReminders();
     const interval = window.setInterval(checkForReminders, CHECK_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [appointments, account, isAuthenticated]);
+  }, [appointments, account, isAuthenticated, token]);
 
   return null;
 }
