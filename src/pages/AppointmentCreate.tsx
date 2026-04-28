@@ -360,8 +360,8 @@ function AppointmentCreate() {
   const getTileStyle = (isSelected: boolean) =>
     `flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all cursor-pointer select-none caret-transparent ${
       isSelected
-        ? "border-blue-600 bg-blue-50 ring-2 ring-blue-600 ring-offset-2 shadow-md dark:border-blue-400 dark:bg-slate-800/90 dark:ring-blue-400/70 dark:ring-offset-0 dark:shadow-sm dark:shadow-black/30"
-        : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-lg hover:-translate-y-1 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-400/70 dark:hover:shadow-sm dark:hover:shadow-black/25"
+        ? "border-teal-600 bg-teal-50 ring-2 ring-teal-600 ring-offset-2 shadow-md dark:border-teal-400 dark:bg-slate-800/90 dark:ring-teal-400/70 dark:ring-offset-0 dark:shadow-sm dark:shadow-black/30"
+        : "border-slate-200 bg-white hover:border-teal-300 hover:shadow-lg hover:-translate-y-1 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-teal-400/70 dark:hover:shadow-sm dark:hover:shadow-black/25"
     }`;
 
   return (
@@ -424,8 +424,8 @@ function AppointmentCreate() {
                           aria-label={`Learn about ${t.name}`}
                           className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
                             infoTopicId === t.id
-                              ? "border-blue-300 bg-blue-50 text-blue-700"
-                              : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                              ? "border-teal-300 bg-teal-50 text-teal-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:bg-teal-50"
                           }`}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -438,7 +438,7 @@ function AppointmentCreate() {
                       <div
                         className={`font-semibold ${
                           t.id === topicId
-                            ? "text-blue-700 dark:text-blue-300"
+                            ? "text-teal-700 dark:text-teal-300"
                             : "text-slate-900 dark:text-slate-100"
                         }`}
                       >
@@ -450,29 +450,29 @@ function AppointmentCreate() {
               </div>
 
               {selectedInfoTopic ? (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/35">
+                <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 dark:border-teal-800 dark:bg-teal-950/35">
                   <div className="flex items-center justify-between gap-4">
-                    <div className="font-semibold text-blue-900 dark:text-blue-100">
+                    <div className="font-semibold text-teal-900 dark:text-teal-100">
                       {selectedInfoTopic.icon} {selectedInfoTopic.name}
                     </div>
                     <button
                       type="button"
-                      className="text-sm font-medium text-blue-700 hover:text-blue-900 dark:text-blue-200 dark:hover:text-blue-100"
+                      className="text-sm font-medium text-teal-700 hover:text-teal-900 dark:text-teal-200 dark:hover:text-teal-100"
                       onClick={() => setInfoTopicId("")}
                     >
                       Close
                     </button>
                   </div>
-                  <div className="mt-2 text-sm text-blue-900 dark:text-blue-100">
+                  <div className="mt-2 text-sm text-teal-900 dark:text-teal-100">
                     {topicInfoById[selectedInfoTopic.id]?.overview}
                   </div>
-                  <div className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+                  <div className="mt-2 text-sm text-teal-800 dark:text-teal-200">
                     Typical help: {topicInfoById[selectedInfoTopic.id]?.typicalHelp}
                   </div>
-                  <div className="mt-1 text-sm text-blue-800 dark:text-blue-200">
+                  <div className="mt-1 text-sm text-teal-800 dark:text-teal-200">
                     Suggested appointment length: {topicInfoById[selectedInfoTopic.id]?.suggestedDuration}
                   </div>
-                  <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                  <div className="mt-2 text-xs text-teal-700 dark:text-teal-300">
                     Viewing details does not change your selected topic.
                   </div>
                 </div>
@@ -495,7 +495,7 @@ function AppointmentCreate() {
                   </div>
                   <button
                     type="button"
-                    className="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="rounded-full border border-teal-300 px-3 py-1 text-xs font-medium text-teal-700 transition-colors hover:bg-teal-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                     onClick={() => setShowAllBranches((current) => !current)}
                   >
                     {showAllBranches ? "Show compatible only" : "Show all branches"}
@@ -531,7 +531,7 @@ function AppointmentCreate() {
                      <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                         📍
                      </div>
-                    <div className={`font-semibold ${b.id === branchId ? "text-blue-700 dark:text-blue-300" : "text-slate-900 dark:text-slate-100"}`}>
+                    <div className={`font-semibold ${b.id === branchId ? "text-teal-700 dark:text-teal-300" : "text-slate-900 dark:text-slate-100"}`}>
                       {b.name}
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-300">123 Market St • 0.8 mi</div>
@@ -552,8 +552,8 @@ function AppointmentCreate() {
                             aria-label={`Learn about ${t.name}`}
                             className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-sm transition-colors ${
                               infoTopicId === tid
-                                ? "border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/40"
-                                : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-700 dark:hover:bg-blue-900/35"
+                                ? "border-teal-300 bg-teal-50 dark:border-teal-700 dark:bg-teal-900/40"
+                                : "border-slate-200 bg-white hover:border-teal-300 hover:bg-teal-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-teal-700 dark:hover:bg-teal-900/35"
                             }`}
                             onClick={(event) => {
                               event.stopPropagation();
@@ -571,29 +571,29 @@ function AppointmentCreate() {
               </div>
 
               {selectedInfoTopic ? (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/35">
+                <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 dark:border-teal-800 dark:bg-teal-950/35">
                   <div className="flex items-center justify-between gap-4">
-                    <div className="font-semibold text-blue-900 dark:text-blue-100">
+                    <div className="font-semibold text-teal-900 dark:text-teal-100">
                       {selectedInfoTopic.icon} {selectedInfoTopic.name}
                     </div>
                     <button
                       type="button"
-                      className="text-sm font-medium text-blue-700 hover:text-blue-900 dark:text-blue-200 dark:hover:text-blue-100"
+                      className="text-sm font-medium text-teal-700 hover:text-teal-900 dark:text-teal-200 dark:hover:text-teal-100"
                       onClick={() => setInfoTopicId("")}
                     >
                       Close
                     </button>
                   </div>
-                  <div className="mt-2 text-sm text-blue-900 dark:text-blue-100">
+                  <div className="mt-2 text-sm text-teal-900 dark:text-teal-100">
                     {topicInfoById[selectedInfoTopic.id]?.overview}
                   </div>
-                  <div className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+                  <div className="mt-2 text-sm text-teal-800 dark:text-teal-200">
                     Typical help: {topicInfoById[selectedInfoTopic.id]?.typicalHelp}
                   </div>
-                  <div className="mt-1 text-sm text-blue-800 dark:text-blue-200">
+                  <div className="mt-1 text-sm text-teal-800 dark:text-teal-200">
                     Suggested appointment length: {topicInfoById[selectedInfoTopic.id]?.suggestedDuration}
                   </div>
-                  <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                  <div className="mt-2 text-xs text-teal-700 dark:text-teal-300">
                     Your selected appointment topic remains {selectedTopic?.name ?? "unchanged"}.
                   </div>
                 </div>
@@ -619,16 +619,16 @@ function AppointmentCreate() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+              <div className="rounded-xl border border-teal-200 bg-teal-50/40 p-4 dark:border-teal-800 dark:bg-teal-950/20">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                     Calendar Window: {selectedDateMonthLabel}
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-300">
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
                     Starts from today and updates automatically.
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-4 flex flex-wrap gap-2">
                   {availableDates.map((dateISO) => {
                     const label = DATE_LABEL_FORMATTER.format(fromDateISO(dateISO));
                     const isSelected = selectedDateISO === dateISO;
@@ -636,10 +636,10 @@ function AppointmentCreate() {
                       <button
                         key={dateISO}
                         type="button"
-                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                        className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                           isSelected
-                            ? "border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-200"
-                            : "border-slate-300 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-blue-500"
+                            ? "border-teal-600 bg-teal-600 text-white shadow-md shadow-teal-200 dark:border-teal-400 dark:shadow-sm dark:shadow-black/30"
+                            : "border-teal-300 bg-white text-slate-700 hover:border-teal-500 hover:shadow-md dark:border-teal-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-teal-600 dark:hover:shadow-sm"
                         }`}
                         onClick={() => {
                           setSelectedDateISO(dateISO);
@@ -731,11 +731,11 @@ function AppointmentCreate() {
             <div className={section}>
               <div className={h2}>5. Review & Confirm</div>
               <div className={muted}>Please double check your appointment details.</div>
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950/35 dark:text-blue-200">
+              <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 text-sm text-teal-800 dark:border-teal-800 dark:bg-teal-950/35 dark:text-teal-200">
                 After you confirm, we will send an email confirmation and generate a simple lookup number.
               </div>
 
-              <div className="rounded-xl bg-slate-50 p-6 border border-slate-100 dark:border-slate-700 dark:bg-slate-800/70">
+              <div className="rounded-xl bg-teal-50/40 p-6 border border-teal-100 dark:border-slate-700 dark:bg-slate-800/70">
                 <div className="flex flex-col gap-4">
                   <div className={rowBetween}>
                     <div className="text-sm text-slate-500 dark:text-slate-300">Service</div>

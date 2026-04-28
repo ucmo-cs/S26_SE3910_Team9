@@ -68,7 +68,7 @@ function AppointmentList() {
               <Card key={a.id}>
                 <div className="flex items-start justify-between">
                   <div className="flex flex-col gap-1">
-                    <span className={pill + " bg-blue-50 text-blue-700 border-blue-100 mb-2 w-fit dark:border-blue-800 dark:bg-blue-950/35 dark:text-blue-200"}>
+                    <span className={pill + " bg-teal-50 text-teal-700 border-teal-100 mb-2 w-fit dark:border-teal-800 dark:bg-teal-950/35 dark:text-teal-200"}>
                       {a.status}
                     </span>
                     <div className="font-bold text-slate-900 text-lg dark:text-slate-100">{a.topicName}</div>

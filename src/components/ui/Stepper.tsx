@@ -7,8 +7,8 @@ type Props = {
 
 function Stepper(props: Props) {
   return (
-    <div className="w-full overflow-x-auto overflow-y-visible py-2">
-      <div className={`${row} min-w-max`}>
+    <div className="w-full overflow-x-auto overflow-y-visible py-3">
+      <div className={`${row} min-w-max gap-1`}>
         {props.steps.map((s, idx) => {
           const isCurrent = idx === props.currentIndex;
           const isDone = idx < props.currentIndex;
@@ -16,22 +16,22 @@ function Stepper(props: Props) {
           // Dynamic styles based on state
           let circleStyle = "border-slate-300 bg-white text-slate-500";
           let textStyle = "text-slate-500 dark:text-slate-300";
-          let lineStyle = "bg-slate-200 dark:bg-slate-700";
+          let lineStyle = "bg-slate-300 dark:bg-slate-700";
 
           if (isCurrent) {
-            circleStyle = "border-blue-600 bg-blue-600 text-white ring-2 ring-blue-100 dark:ring-blue-900/50";
-            textStyle = "text-blue-700 font-semibold dark:text-blue-300";
+            circleStyle = "border-teal-600 bg-teal-600 text-white ring-2 ring-teal-200 dark:ring-teal-800";
+            textStyle = "text-teal-700 font-semibold dark:text-teal-300";
           } else if (isDone) {
-            circleStyle = "border-blue-600 bg-blue-600 text-white";
-            textStyle = "text-blue-600 font-medium dark:text-blue-400";
-            lineStyle = "bg-blue-600";
+            circleStyle = "border-teal-600 bg-teal-600 text-white";
+            textStyle = "text-teal-600 font-medium dark:text-teal-400";
+            lineStyle = "bg-teal-600";
           }
 
           return (
             <div key={s} className="flex items-center">
               <div className="flex items-center gap-2">
                 <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all ${circleStyle}`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all ${circleStyle}`}
                 >
                   {isDone ? (
                     // Checkmark icon
@@ -48,15 +48,15 @@ function Stepper(props: Props) {
                       />
                     </svg>
                   ) : (
-                    <span className="text-xs">{idx + 1}</span>
+                    <span className="text-xs font-bold">{idx + 1}</span>
                   )}
                 </div>
-                <span className={`text-sm whitespace-nowrap ${textStyle}`}>{s}</span>
+                <span className={`text-sm font-medium whitespace-nowrap ${textStyle}`}>{s}</span>
               </div>
               
               {/* Connector Line (except for last item) */}
               {idx < props.steps.length - 1 && (
-                <div className={`mx-4 h-0.5 w-8 rounded md:w-16 ${lineStyle}`} />
+                <div className={`mx-3 h-1 w-6 rounded md:w-12 transition-colors ${lineStyle}`} />
               )}
             </div>
           );

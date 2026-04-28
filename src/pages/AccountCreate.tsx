@@ -126,14 +126,14 @@ function AccountCreate() {
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="button"
-                    className={`${button} ${mode === "register" ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-100"}`}
+                    className={`${button} ${mode === "register" ? "bg-teal-600 text-white hover:bg-teal-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-100"}`}
                     onClick={() => setMode("register")}
                   >
                     Register
                   </button>
                   <button
                     type="button"
-                    className={`${button} ${mode === "signin" ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-100"}`}
+                    className={`${button} ${mode === "signin" ? "bg-teal-600 text-white hover:bg-teal-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-100"}`}
                     onClick={() => setMode("signin")}
                   >
                     Sign In
@@ -228,7 +228,7 @@ function AccountCreate() {
                       : "Need an account?"}
                     <button
                       type="button"
-                      className="ml-2 font-semibold text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200"
+                      className="ml-2 font-semibold text-teal-600 hover:text-teal-800 dark:text-teal-300 dark:hover:text-teal-200"
                       onClick={() => setMode(mode === "register" ? "signin" : "register")}
                     >
                       {mode === "register" ? "Sign In" : "Register"}
