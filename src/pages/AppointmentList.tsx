@@ -1,4 +1,4 @@
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import { page, stack, grid2 } from "../styles/layout";
@@ -6,6 +6,7 @@ import { button, buttonPrimary, emptyState, pill } from "../styles/ui";
 
 import { useAppointments } from "../state/appointments";
 import { useUser } from "../state/user";
+import { useAuthRedirect } from "../hooks/useAuthRedirect";
 
 // we no longer need mock data; type reexported for clarity
 export type Appointment = {
@@ -20,12 +21,9 @@ export type Appointment = {
 };
 
 function AppointmentList() {
+  useAuthRedirect();
   const { appointments, removeAppointment } = useAppointments();
   const { account, isAuthenticated } = useUser();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/account/create" replace />;
-  }
 
   const visibleAppointments = appointments.filter(
     (appointment) => account && appointment.customerEmail.toLowerCase() === account.email.toLowerCase()

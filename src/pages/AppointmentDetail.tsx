@@ -1,4 +1,4 @@
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
@@ -7,9 +7,11 @@ import { button, muted, divider } from "../styles/ui";
 
 import { useAppointments } from "../state/appointments";
 import { useUser } from "../state/user";
+import { useAuthRedirect } from "../hooks/useAuthRedirect";
 import type { Appointment } from "../state/appointments";
 
 function AppointmentDetail() {
+  useAuthRedirect();
   const params = useParams();
   const { account, isAuthenticated } = useUser();
   const appointmentId = params.appointmentId ?? "";

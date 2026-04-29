@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import { page, stack, section } from "../styles/layout";
 import { button, buttonPrimary, buttonGhost, buttonDanger, h2, input, label, muted } from "../styles/ui";
 import { useUser } from "../state/user";
+import { useAuthRedirect } from "../hooks/useAuthRedirect";
 
 function AccountProfile() {
+  useAuthRedirect();
   const { account, isAuthenticated, signOut, updatePassword } = useUser();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -19,10 +21,6 @@ function AccountProfile() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  if (!isAuthenticated || !account) {
-    return <Navigate to="/account/create" replace />;
-  }
 
   const isCurrentPasswordValid = currentPassword.length > 0;
   const isNewPasswordValid = newPassword.length >= 8;

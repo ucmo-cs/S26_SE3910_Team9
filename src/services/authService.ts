@@ -24,6 +24,11 @@ export interface AccountResponse {
   email: string;
 }
 
+export interface UpdatePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export async function register(request: RegisterRequest): Promise<AccountResponse> {
   const response = await fetch(`${API_BASE_URL}/accounts/register`, {
     method: 'POST',
@@ -56,4 +61,22 @@ export async function login(request: LoginRequest): Promise<LoginResponse> {
   }
 
   return response.json();
+}
+
+export async function updatePassword(request: UpdatePasswordRequest, token: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/accounts/update-password`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Password update failed');
+  }
+
+  return true;
 }

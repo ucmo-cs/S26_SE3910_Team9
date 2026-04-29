@@ -14,7 +14,9 @@ function TopNav({ isDark, onThemeToggle }: TopNavProps) {
   const onAppointmentsList = Boolean(useMatch({ path: "/appointments", end: true }));
   const onCreateAppointment = Boolean(useMatch("/appointments/create"));
   const onAppointmentDetail = Boolean(useMatch({ path: "/appointments/:appointmentId", end: true })) && !onCreateAppointment;
-  const onAccountPage = Boolean(useMatch("/account/create")) || Boolean(useMatch("/account/profile"));
+  const onCreateAccountMatch = Boolean(useMatch("/account/create"));
+  const onProfileMatch = Boolean(useMatch("/account/profile"));
+  const onAccountPage = onCreateAccountMatch || onProfileMatch;
 
   const handleSignOut = () => {
     signOut();

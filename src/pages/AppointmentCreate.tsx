@@ -10,6 +10,7 @@ import { button, buttonPrimary, buttonGhost, divider, h2, input, label, muted, e
 // use shared appointment state
 import { useAppointments } from "../state/appointments";
 import { useUser } from "../state/user";
+import { useAuthRedirect } from "../hooks/useAuthRedirect";
 
 // Email service
 // import { sendAppointmentConfirmation } from "../services/emailService";
@@ -169,6 +170,7 @@ type StepId = "topic" | "branch" | "time" | "details" | "confirm";
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function AppointmentCreate() {
+  useAuthRedirect();
   const navigate = useNavigate();
 
   const steps = ["Topic", "Branch", "Time", "Details", "Confirm"];
@@ -190,12 +192,6 @@ function AppointmentCreate() {
 
   const { appointments, addAppointment } = useAppointments();
   const { account, isAuthenticated } = useUser();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/account/create");
-    }
-  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     if (!account) return;

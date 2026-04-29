@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { register, login } from "../services/authService";
-import type { LoginRequest, RegisterRequest } from "../services/authService";
+import { register, login, updatePassword } from "../services/authService";
+import type { LoginRequest, RegisterRequest, UpdatePasswordRequest } from "../services/authService";
 
 export type UserAccount = {
   fullName: string;
@@ -14,6 +14,7 @@ interface UserContextType {
   createAccount: (payload: RegisterRequest) => Promise<boolean>;
   signIn: (payload: LoginRequest) => Promise<boolean>;
   signOut: () => void;
+  updatePassword: (payload: UpdatePasswordRequest) => Promise<boolean>;
 }
 
 const TOKEN_STORAGE_KEY = "auth-token";
@@ -106,6 +107,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setAccount(null);
   };
 
+  const handleUpdatePassword = async (payload: UpdatePasswordRequest) => {
+    if (!token) {
+      throw new Error("Not authenticated");
+    }
+    try {
+      await updatePassword(payload, token);
+      return true;
+    } catch (error) {
+      console.error('Password update failed:', error);
+      return false;
+    }
+  };
+
   return (
     <UserContext.Provider
       value={{
@@ -115,6 +129,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         createAccount,
         signIn,
         signOut,
+        updatePassword: handleUpdatePassword,
       }}
     >
       {children}
